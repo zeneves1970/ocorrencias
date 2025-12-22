@@ -27,7 +27,7 @@ jobs:
 
       # 4️⃣ Executar o script de monitorização
       - name: Run monitor script
-        run: python monitor.py
+        run: python monitor_aveiro.py
 
       # 5️⃣ Commit e push automático da base de dados
       - name: Commit DB automatically
