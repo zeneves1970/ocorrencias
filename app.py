@@ -7,7 +7,7 @@ import dropbox
 # --- Dropbox ---
 DROPBOX_TOKEN = os.getenv("DROPBOX_TOKEN")
 DB_PATH_LOCAL = "ocorrencias_aveiro.db"
-DB_PATH_DROPBOX = "/Apps/monitor-aveiro-db/ocorrencias_aveiro.db"
+DB_PATH_DROPBOX = "/monitor-aveiro-db/ocorrencias_aveiro.db"
 
 def baixar_db():
     dbx = dropbox.Dropbox(DROPBOX_TOKEN)
