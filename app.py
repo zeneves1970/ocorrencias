@@ -10,6 +10,7 @@ DB_PATH_DROPBOX = "/ocorrencias_aveiro.db"
 
 app = FastAPI()
 
+# --- Função para baixar DB do Dropbox ---
 def baixar_db():
     token = os.environ.get("DROPBOX_TOKEN")
     if not token:
@@ -22,9 +23,8 @@ def baixar_db():
         with open(DB_FILE, "wb") as f:
             f.write(res.content)
         print("📥 DB descarregada do Dropbox")
-    except dropbox.exceptions.ApiError as e:
+    except dropbox.exceptions.ApiError:
         print("⚠️ DB não encontrada no Dropbox. Será criada localmente")
-        # Cria DB local se não existir
         conn = sqlite3.connect(DB_FILE)
         conn.execute("""
             CREATE TABLE IF NOT EXISTS ocorrencias (
@@ -40,6 +40,7 @@ def baixar_db():
         conn.commit()
         conn.close()
 
+# --- Rota principal ---
 @app.get("/", response_class=HTMLResponse)
 def mostrar_tabela():
     try:
@@ -51,15 +52,18 @@ def mostrar_tabela():
         conn = sqlite3.connect(DB_FILE)
         c = conn.cursor()
 
+        # Seleciona apenas uma ocorrência por objectid
         rows = c.execute("""
             SELECT natureza, concelho, estado,
                    meios_terrestres, meios_aereos, operacionais
             FROM ocorrencias
+            GROUP BY objectid
             ORDER BY concelho
         """).fetchall()
 
         conn.close()
 
+        # --- Monta a tabela HTML ---
         html = """
         <html>
         <head>
