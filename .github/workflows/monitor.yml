@@ -2,37 +2,40 @@ name: Monitor Ocorrências Aveiro
 
 on:
   schedule:
-    - cron: "*/5 * * * *"   # a cada 5 minutos
-  workflow_dispatch:
+    - cron: "*/5 * * * *"  # a cada 5 minutos
+  workflow_dispatch:         # permite correr manualmente
 
 jobs:
   run-monitor:
     runs-on: ubuntu-latest
 
     steps:
+      # 1️⃣ Fazer checkout do repositório
       - name: Checkout repo
         uses: actions/checkout@v4
         with:
-          persist-credentials: false  # importante
+          persist-credentials: true  # mantem o GITHUB_TOKEN para git-auto-commit
 
+      # 2️⃣ Configurar Python
       - name: Setup Python
         uses: actions/setup-python@v5
         with:
           python-version: "3.11"
 
+      # 3️⃣ Instalar dependências
       - name: Install dependencies
         run: |
           pip install requests
 
-      - name: Run monitor
+      # 4️⃣ Executar o script de monitorização
+      - name: Run monitor script
         run: |
           python monitor_aveiro.py
 
-      - name: Commit database
-        run: |
-          git config user.name "github-actions"
-          git config user.email "actions@github.com"
-          git add ocorrencias_aveiro.db
-          git commit -m "Atualização automática da BD" || echo "Sem alterações"
-          git push https://x-access-token:${{ secrets.GITHUB_TOKEN }}@github.com/${{ github.repository }}.git HEAD:main
-        
+      # 5️⃣ Commit e push automático da base de dados
+      - name: Commit DB automatically
+        uses: stefanzweifel/git-auto-commit-action@v4
+        with:
+          commit_message: "Atualização automática da BD"
+          branch: main
+          file_pattern: ocorrencias_aveiro.db
