@@ -12,6 +12,8 @@ jobs:
     steps:
       - name: Checkout repo
         uses: actions/checkout@v4
+        with:
+          persist-credentials: false  # importante
 
       - name: Setup Python
         uses: actions/setup-python@v5
@@ -32,6 +34,5 @@ jobs:
           git config user.email "actions@github.com"
           git add ocorrencias_aveiro.db
           git commit -m "Atualização automática da BD" || echo "Sem alterações"
-          git push "https://${{ secrets.GITHUB_TOKEN }}@github.com/${{ github.repository }}.git" HEAD:main
-
+          git push https://x-access-token:${{ secrets.GITHUB_TOKEN }}@github.com/${{ github.repository }}.git HEAD:main
         
