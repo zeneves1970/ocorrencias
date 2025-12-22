@@ -30,7 +30,7 @@ def baixar_db():
             f.write(res.content)
         print("📥 DB descarregada do Dropbox")
     except dropbox.exceptions.ApiError:
-        print("DB não encontrada no Dropbox, será criada localmente")
+        print("⚠️ DB não encontrada no Dropbox. Será criada localmente")
         conn = sqlite3.connect(DB_FILE)
         conn.execute("""
             CREATE TABLE IF NOT EXISTS ocorrencias (
@@ -40,7 +40,8 @@ def baixar_db():
                 estado TEXT,
                 meios_terrestres INTEGER,
                 meios_aereos INTEGER,
-                operacionais INTEGER
+                operacionais INTEGER,
+                data_atualizacao TIMESTAMP DEFAULT CURRENT_TIMESTAMP
             )
         """)
         conn.commit()
@@ -55,7 +56,7 @@ def enviar_db():
         dbx.files_upload(f.read(), DROPBOX_PATH, mode=dropbox.files.WriteMode.overwrite)
     print("📤 DB enviada para o Dropbox")
 
-# --- SQLite ---
+# --- Inicialização DB ---
 baixar_db()
 conn = sqlite3.connect(DB_FILE)
 c = conn.cursor()
@@ -67,7 +68,8 @@ CREATE TABLE IF NOT EXISTS ocorrencias (
     estado TEXT,
     meios_terrestres INTEGER,
     meios_aereos INTEGER,
-    operacionais INTEGER
+    operacionais INTEGER,
+    data_atualizacao TIMESTAMP DEFAULT CURRENT_TIMESTAMP
 )
 """)
 conn.commit()
@@ -93,15 +95,16 @@ def obter_ocorrencias():
 def guardar_ocorrencia_sqlite(attrs):
     c.execute("""
         INSERT INTO ocorrencias
-        (objectid, natureza, concelho, estado, meios_terrestres, meios_aereos, operacionais)
-        VALUES (?, ?, ?, ?, ?, ?, ?)
+        (objectid, natureza, concelho, estado, meios_terrestres, meios_aereos, operacionais, data_atualizacao)
+        VALUES (?, ?, ?, ?, ?, ?, ?, CURRENT_TIMESTAMP)
         ON CONFLICT(objectid) DO UPDATE SET
             natureza=excluded.natureza,
             concelho=excluded.concelho,
             estado=excluded.estado,
             meios_terrestres=excluded.meios_terrestres,
             meios_aereos=excluded.meios_aereos,
-            operacionais=excluded.operacionais
+            operacionais=excluded.operacionais,
+            data_atualizacao=CURRENT_TIMESTAMP
     """, (
         attrs['OBJECTID'],
         attrs.get('Natureza', ''),
@@ -113,13 +116,22 @@ def guardar_ocorrencia_sqlite(attrs):
     ))
     conn.commit()
 
+def apagar_antigas():
+    c.execute("""
+        DELETE FROM ocorrencias
+        WHERE data_atualizacao < datetime('now', '-10 days')
+    """)
+    conn.commit()
+
 def monitorizar():
     ocorrencias = obter_ocorrencias()
     for o in ocorrencias:
         attrs = o["attributes"]
         guardar_ocorrencia_sqlite(attrs)
+
+    apagar_antigas()  # remove registros com mais de 10 dias
     enviar_db()
-    print(f"✔️ {len(ocorrencias)} ocorrências atualizadas.")
+    print(f"✔️ {len(ocorrencias)} ocorrências atualizadas e antigas removidas.")
 
 # --- Executar monitorização ---
 if __name__ == "__main__":
