@@ -32,4 +32,4 @@ jobs:
           git config user.email "actions@github.com"
           git add ocorrencias_aveiro.db
           git commit -m "Atualização automática da BD" || echo "Sem alterações"
-          git push
+          git push https://x-access-token:${{ secrets.GITHUB_TOKEN }}@github.com/${{ github.repository }}.git HEAD:main
