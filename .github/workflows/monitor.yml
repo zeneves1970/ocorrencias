@@ -10,27 +10,29 @@ jobs:
     runs-on: ubuntu-latest
 
     steps:
+      # 1️⃣ Checkout do repo (mantém credenciais do Actions)
       - name: Checkout repo
         uses: actions/checkout@v4
-        with:
-          persist-credentials: false  # importante para usar o token manualmente
 
+      # 2️⃣ Configurar Python
       - name: Setup Python
         uses: actions/setup-python@v5
         with:
           python-version: "3.11"
 
+      # 3️⃣ Instalar dependências
       - name: Install dependencies
         run: pip install requests
 
+      # 4️⃣ Executar o script
       - name: Run monitor script
         run: python monitor_aveiro.py
 
-      - name: Commit and push DB manually
+      # 5️⃣ Commit e push manual
+      - name: Commit DB
         run: |
           git config user.name "github-actions"
           git config user.email "actions@github.com"
           git add ocorrencias_aveiro.db
           git commit -m "Atualização automática da BD" || echo "Sem alterações"
-          git push https://${{ secrets.GITHUB_TOKEN }}@github.com/${{ github.repository }}.git HEAD:main
-
+          git push
