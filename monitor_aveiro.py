@@ -1,7 +1,39 @@
+import os
+import dropbox
 import requests
 import sqlite3
 import time
 import atexit
+
+def dropbox_download_db():
+    token = os.environ.get("DROPBOX_TOKEN")
+    if not token:
+        raise RuntimeError("DROPBOX_TOKEN não definido")
+
+    dbx = dropbox.Dropbox(token)
+
+    try:
+        dbx.files_download_to_file(DB_FILE, DROPBOX_PATH)
+        print("📥 DB descarregada do Dropbox")
+    except dropbox.exceptions.ApiError:
+        print("📁 DB não existe no Dropbox — será criada localmente")
+
+
+def dropbox_upload_db():
+    token = os.environ.get("DROPBOX_TOKEN")
+    if not token:
+        raise RuntimeError("DROPBOX_TOKEN não definido")
+
+    dbx = dropbox.Dropbox(token)
+
+    with open(DB_FILE, "rb") as f:
+        dbx.files_upload(
+            f.read(),
+            DROPBOX_PATH,
+            mode=dropbox.files.WriteMode.overwrite
+        )
+
+    print("📤 DB enviada para o Dropbox")
 
 # URL da API
 URL = "https://prociv-agserver.geomai.mai.gov.pt/arcgis/rest/services/Ocorrencias_Base/FeatureServer/0/query"
@@ -28,6 +60,8 @@ BASE_PARAMS = {
 
 # SQLite
 DB_FILE = "ocorrencias_aveiro.db"
+DROPBOX_PATH = "/ocorrencias_aveiro.db"
+dropbox_download_db()
 conn = sqlite3.connect(DB_FILE)
 c = conn.cursor()
 
@@ -208,3 +242,6 @@ def monitorizar():
 
 if __name__ == "__main__":
     monitorizar()
+
+dropbox_upload_db()
+
