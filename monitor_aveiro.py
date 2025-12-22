@@ -101,13 +101,25 @@ def guardar_historico(attrs):
     ))
     conn.commit()
 
-def houve_aumento_operacionais(attrs):
+def houve_alteracao(attrs):
+    """
+    Verifica se houve aumento de operacionais, meios terrestres ou meios aéreos.
+    Retorna True se qualquer um aumentou.
+    """
     c.execute("""
-        SELECT operacionais FROM ocorrencias
+        SELECT operacionais, meios_terrestres, meios_aereos
+        FROM ocorrencias
         WHERE objectid = ?
     """, (attrs['OBJECTID'],))
     row = c.fetchone()
-    return row and attrs.get('Operacionais', 0) > row[0]
+    if not row:
+        return False  # não existe ainda
+    oper_antes, terrestres_antes, aereos_antes = row
+    return (
+        attrs.get('Operacionais', 0) > oper_antes or
+        attrs.get('NumeroMeiosTerrestresEnvolvidos', 0) > terrestres_antes or
+        attrs.get('NumeroMeiosAereosEnvolvidos', 0) > aereos_antes
+    )
 
 # Função para guardar ocorrência no SQLite
 def guardar_ocorrencia_sqlite(attrs):
@@ -163,7 +175,7 @@ def monitorizar():
         if guardar_ocorrencia_sqlite(attrs):
             novas.append(attrs)
         else:
-            if houve_aumento_operacionais(attrs):
+            if houve_alteracao(attrs):
                 reforcos.append(attrs)
             atualizar_ocorrencia(attrs)
 
