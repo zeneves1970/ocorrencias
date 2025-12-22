@@ -1,4 +1,4 @@
-from fastapi import FastAPI, Response
+from fastapi import FastAPI
 from fastapi.responses import HTMLResponse
 import sqlite3
 import os
@@ -34,7 +34,8 @@ def baixar_db():
                 estado TEXT,
                 meios_terrestres INTEGER,
                 meios_aereos INTEGER,
-                operacionais INTEGER
+                operacionais INTEGER,
+                data_atualizacao TIMESTAMP DEFAULT CURRENT_TIMESTAMP
             )
         """)
         conn.commit()
@@ -63,11 +64,12 @@ def mostrar_tabela():
 
         conn.close()
 
-        # --- Monta a tabela HTML ---
+        # --- Monta a tabela HTML com auto-refresh ---
         html = """
         <html>
         <head>
             <title>Ocorrências – Aveiro</title>
+            <meta http-equiv="refresh" content="60">
             <style>
                 body { font-family: Arial; }
                 table { border-collapse: collapse; width: 100%; }
