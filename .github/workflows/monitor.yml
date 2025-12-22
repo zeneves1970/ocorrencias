@@ -24,7 +24,7 @@ jobs:
 
       - name: Run monitor
         run: |
-          python monitor.py
+          python monitor_aveiro.py
 
       - name: Commit database
         run: |
