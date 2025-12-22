@@ -32,9 +32,9 @@ def baixar_db():
                 natureza TEXT,
                 concelho TEXT,
                 estado TEXT,
+                operacionais INTEGER,
                 meios_terrestres INTEGER,
                 meios_aereos INTEGER,
-                operacionais INTEGER,
                 data_atualizacao TIMESTAMP DEFAULT CURRENT_TIMESTAMP
             )
         """)
@@ -56,7 +56,7 @@ def mostrar_tabela():
         # Seleciona apenas uma ocorrência por objectid
         rows = c.execute("""
             SELECT natureza, concelho, estado,
-                   meios_terrestres, meios_aereos, operacionais
+                   operacionais, meios_terrestres, meios_aereos
             FROM ocorrencias
             GROUP BY objectid
             ORDER BY concelho
@@ -84,10 +84,10 @@ def mostrar_tabela():
                     <th>Natureza</th>
                     <th>Concelho</th>
                     <th>Estado</th>
+                    <th>Operacionais</th>
                     <th>Meios T.</th>
                     <th>Meios A.</th>
-                    <th>Operacionais</th>
-                </tr>
+                    </tr>
         """
 
         for r in rows:
