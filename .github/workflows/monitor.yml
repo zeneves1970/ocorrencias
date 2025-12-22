@@ -27,12 +27,11 @@ jobs:
           python monitor_aveiro.py
 
       - name: Commit database
-      - name: Commit database
-  run: |
-    git config user.name "github-actions"
-    git config user.email "actions@github.com"
-    git add ocorrencias_aveiro.db
-    git commit -m "Atualização automática da BD" || echo "Sem alterações"
-    git push "https://${{ secrets.GITHUB_TOKEN }}@github.com/${{ github.repository }}.git" HEAD:main
+        run: |
+          git config user.name "github-actions"
+          git config user.email "actions@github.com"
+          git add ocorrencias_aveiro.db
+          git commit -m "Atualização automática da BD" || echo "Sem alterações"
+          git push "https://${{ secrets.GITHUB_TOKEN }}@github.com/${{ github.repository }}.git" HEAD:main
 
         
