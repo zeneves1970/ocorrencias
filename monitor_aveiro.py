@@ -157,25 +157,27 @@ def houve_alteracao(attrs):
 
 # Função para guardar ocorrência no SQLite
 def guardar_ocorrencia_sqlite(attrs):
-    try:
-        c.execute("""
-        INSERT INTO ocorrencias 
+    c.execute("""
+        INSERT INTO ocorrencias
         (objectid, natureza, concelho, estado, meios_terrestres, meios_aereos, operacionais)
         VALUES (?, ?, ?, ?, ?, ?, ?)
-        """, (
-            attrs['OBJECTID'],
-            attrs.get('Natureza', ''),
-            attrs.get('Concelho', ''),
-            attrs.get('EstadoAgrupado', ''),
-            attrs.get('NumeroMeiosTerrestresEnvolvidos', 0),
-            attrs.get('NumeroMeiosAereosEnvolvidos', 0),
-            attrs.get('Operacionais', 0)  # <-- correto
-        ))
-        conn.commit()
-        return True
-    except sqlite3.IntegrityError:
-        # Já existe no banco
-        return False
+        ON CONFLICT(objectid) DO UPDATE SET
+            natureza=excluded.natureza,
+            concelho=excluded.concelho,
+            estado=excluded.estado,
+            meios_terrestres=excluded.meios_terrestres,
+            meios_aereos=excluded.meios_aereos,
+            operacionais=excluded.operacionais
+    """, (
+        attrs['OBJECTID'],
+        attrs.get('Natureza', ''),
+        attrs.get('Concelho', ''),
+        attrs.get('EstadoAgrupado', ''),
+        attrs.get('NumeroMeiosTerrestresEnvolvidos', 0),
+        attrs.get('NumeroMeiosAereosEnvolvidos', 0),
+        attrs.get('Operacionais', 0)
+    ))
+    conn.commit()
 
 def atualizar_ocorrencia(attrs):
     c.execute("""
