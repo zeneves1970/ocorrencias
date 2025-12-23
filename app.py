@@ -3,10 +3,12 @@ from fastapi.responses import HTMLResponse
 import sqlite3
 import os
 import dropbox
+from datetime import datetime, timedelta
 
 # --- Configurações ---
 DB_FILE = "ocorrencias_aveiro.db"
 DB_PATH_DROPBOX = "/ocorrencias_aveiro.db"
+HIGHLIGHT_DAYS = 1  # destacar ocorrências atualizadas nas últimas 24h
 
 app = FastAPI()
 
@@ -17,7 +19,6 @@ def baixar_db():
         raise RuntimeError("DROPBOX_TOKEN não definido")
 
     dbx = dropbox.Dropbox(token)
-
     try:
         metadata, res = dbx.files_download(DB_PATH_DROPBOX)
         with open(DB_FILE, "wb") as f:
@@ -53,18 +54,21 @@ def mostrar_tabela():
         conn = sqlite3.connect(DB_FILE)
         c = conn.cursor()
 
-        # Seleciona apenas uma ocorrência por objectid
+        # Seleciona ocorrências com data_atualizacao para destaque
         rows = c.execute("""
             SELECT natureza, concelho, estado,
-                   operacionais, meios_terrestres, meios_aereos
+                   operacionais, meios_terrestres, meios_aereos, data_atualizacao
             FROM ocorrencias
             GROUP BY objectid
-            ORDER BY concelho
+            ORDER BY data_atualizacao DESC
         """).fetchall()
 
         conn.close()
 
-        # --- Monta a tabela HTML com auto-refresh ---
+        agora = datetime.utcnow()
+        destaque_limite = agora - timedelta(days=HIGHLIGHT_DAYS)
+
+        # --- Monta tabela HTML ---
         html = """
         <html>
         <head>
@@ -75,6 +79,9 @@ def mostrar_tabela():
                 table { border-collapse: collapse; width: 100%; }
                 th, td { border: 1px solid #ccc; padding: 6px; }
                 th { background: #f2f2f2; }
+                .recente { background-color: #fffbcc; }   /* amarelo claro */
+                .resolucao { background-color: #ffd6d6; } /* vermelho claro */
+                .conclusao { background-color: #d6ffd6; } /* verde claro */
             </style>
         </head>
         <body>
@@ -91,8 +98,22 @@ def mostrar_tabela():
         """
 
         for r in rows:
+            # r[6] = data_atualizacao
+            data_up = datetime.strptime(r[6], "%Y-%m-%d %H:%M:%S")
+            classe = ""
+
+            # Destacar recentes
+            if data_up >= destaque_limite:
+                classe = "recente"
+
+            # Destacar por estado
+            if r[2] == "Em Resolução":
+                classe = "resolucao"
+            elif r[2] == "Em Conclusão":
+                classe = "conclusao"
+
             html += f"""
-            <tr>
+            <tr class="{classe}">
                 <td>{r[0]}</td>
                 <td>{r[1]}</td>
                 <td>{r[2]}</td>
@@ -107,4 +128,3 @@ def mostrar_tabela():
 
     except Exception as e:
         return HTMLResponse(f"<h2>Erro ao ler DB: {e}</h2>", status_code=500)
-
