@@ -95,11 +95,10 @@ def mostrar_tabela():
                 table { border-collapse: collapse; width: 100%; }
                 th, td { border: 1px solid #ccc; padding: 6px; }
                 th { background: #f2f2f2; }
-                .recente { background-color: #fffbcc; }   /* amarelo claro */
-                .resolucao { background-color: #ffd6d6; } /* vermelho claro */
-                .conclusao { background-color: #d6ffd6; } /* verde claro */
-                .despacho { background-color: #e0e0ff; } /* azul claro para Em Despacho */
-                .curso { background-color: #fff0b3; }     /* laranja claro para Em Curso */
+                .despacho { background-color: #fff0b3; }   /* amarelo claro */
+                .curso { background-color: #ff7f7f; }       /* vermelho claro */
+                .resolucao { background-color: #a0c4ff; }   /* azul claro */
+                .conclusao { background-color: #b7e4c7; }   /* verde claro */
             </style>
         </head>
         <body>
@@ -126,14 +125,14 @@ def mostrar_tabela():
                 classe = "recente"
 
             # Destacar por estado
-            if r[3] == "Em Resolução":
-                classe = "resolucao"
-            elif r[3] == "Em Conclusão":
-                classe = "conclusao"
-            elif r[3] == "Em Despacho":
+            if r[3] == "Em Despacho":
                 classe = "despacho"
             elif r[3] == "Em Curso":
                 classe = "curso"
+            elif r[3] == "Em Resolução":
+                classe = "resolucao"
+            elif r[3] == "Em Conclusão":
+                classe = "conclusao"
 
             html += f"""
             <tr class="{classe}">
