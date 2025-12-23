@@ -31,6 +31,7 @@ def baixar_db():
         conn.execute("""
             CREATE TABLE IF NOT EXISTS ocorrencias (
                 objectid INTEGER PRIMARY KEY,
+                DataInicioOcorrencia TEXT,
                 natureza TEXT,
                 concelho TEXT,
                 estado TEXT,
@@ -42,7 +43,6 @@ def baixar_db():
         """)
         conn.commit()
         conn.close()
-
 
 # --- Rota principal ---
 @app.get("/", response_class=HTMLResponse)
@@ -56,9 +56,9 @@ def mostrar_tabela():
         conn = sqlite3.connect(DB_FILE)
         c = conn.cursor()
 
-        # Seleciona ocorrências únicas (última atualização) e ordena por estado e data
+        # Seleciona apenas a última atualização de cada objectid
         rows = c.execute("""
-            SELECT o.natureza, o.concelho, o.estado,
+            SELECT o.DataInicioOcorrencia, o.natureza, o.concelho, o.estado,
                    o.operacionais, o.meios_terrestres, o.meios_aereos, o.data_atualizacao
             FROM ocorrencias o
             JOIN (
@@ -70,10 +70,10 @@ def mostrar_tabela():
             AND o.data_atualizacao = ult.max_data
             ORDER BY
                 CASE o.estado
-                    WHEN 'Em despacho' THEN 1
-                    WHEN 'Em curso' THEN 2
-                    WHEN 'Em resolução' THEN 3
-                    WHEN 'Em conclusão' THEN 4
+                    WHEN 'Em Despacho' THEN 1
+                    WHEN 'Em Curso' THEN 2
+                    WHEN 'Em Resolução' THEN 3
+                    WHEN 'Em Conclusão' THEN 4
                     ELSE 5
                 END,
                 o.data_atualizacao DESC
@@ -98,12 +98,15 @@ def mostrar_tabela():
                 .recente { background-color: #fffbcc; }   /* amarelo claro */
                 .resolucao { background-color: #ffd6d6; } /* vermelho claro */
                 .conclusao { background-color: #d6ffd6; } /* verde claro */
+                .despacho { background-color: #e0e0ff; } /* azul claro para Em Despacho */
+                .curso { background-color: #fff0b3; }     /* laranja claro para Em Curso */
             </style>
         </head>
         <body>
             <h2>Ocorrências – Distrito de Aveiro</h2>
             <table>
                 <tr>
+                    <th>Hora Início</th>
                     <th>Natureza</th>
                     <th>Concelho</th>
                     <th>Estado</th>
@@ -114,7 +117,8 @@ def mostrar_tabela():
         """
 
         for r in rows:
-            data_up = datetime.strptime(r[6], "%Y-%m-%d %H:%M:%S")
+            data_inicio = datetime.strptime(r[0], "%Y-%m-%dT%H:%M:%S").strftime("%d/%m/%Y %H:%M")
+            data_up = datetime.strptime(r[7], "%Y-%m-%d %H:%M:%S")
             classe = ""
 
             # Destacar recentes
@@ -122,19 +126,24 @@ def mostrar_tabela():
                 classe = "recente"
 
             # Destacar por estado
-            if r[2] == "Em Resolução":
+            if r[3] == "Em Resolução":
                 classe = "resolucao"
-            elif r[2] == "Em Conclusão":
+            elif r[3] == "Em Conclusão":
                 classe = "conclusao"
+            elif r[3] == "Em Despacho":
+                classe = "despacho"
+            elif r[3] == "Em Curso":
+                classe = "curso"
 
             html += f"""
             <tr class="{classe}">
-                <td>{r[0]}</td>
+                <td>{data_inicio}</td>
                 <td>{r[1]}</td>
                 <td>{r[2]}</td>
                 <td>{r[3]}</td>
-                <td>{r[4]}</td>
-                <td>{r[5]}</td>
+                <td>{r[4]}</td>  <!-- Operacionais -->
+                <td>{r[5]}</td>  <!-- Meios T. -->
+                <td>{r[6]}</td>  <!-- Meios A. -->
             </tr>
             """
 
