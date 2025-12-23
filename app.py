@@ -4,6 +4,7 @@ import sqlite3
 import os
 import dropbox
 from datetime import datetime, timedelta
+import time
 
 # --- Configurações ---
 DB_FILE = "ocorrencias_aveiro.db"
@@ -12,8 +13,21 @@ HIGHLIGHT_DAYS = 1  # destacar ocorrências atualizadas nas últimas 24h
 
 app = FastAPI()
 
-# --- Função para baixar DB do Dropbox ---
+# --- Função para baixar DB do Dropbox (com cache local) ---
 def baixar_db():
+    atualizar = False
+    if not os.path.exists(DB_FILE):
+        atualizar = True
+    else:
+        # verifica se o DB local tem mais de 5 minutos
+        idade_segundos = time.time() - os.path.getmtime(DB_FILE)
+        if idade_segundos > 300:  # 5 minutos
+            atualizar = True
+
+    if not atualizar:
+        print("📂 DB local está atualizada, não precisa baixar")
+        return
+
     dbx = dropbox.Dropbox(
         oauth2_refresh_token=os.environ.get("DROPBOX_REFRESH_TOKEN"),
         app_key=os.environ.get("DROPBOX_APP_KEY"),
@@ -95,10 +109,11 @@ def mostrar_tabela():
                 table { border-collapse: collapse; width: 100%; }
                 th, td { border: 1px solid #ccc; padding: 6px; }
                 th { background: #f2f2f2; }
-                .despacho { background-color: #fff0b3; }   /* amarelo claro */
-                .curso { background-color: #ff7f7f; }       /* vermelho claro */
-                .resolucao { background-color: #a0c4ff; }   /* azul claro */
-                .conclusao { background-color: #b7e4c7; }   /* verde claro */
+                .recente { background-color: #fffbcc; }   /* amarelo claro */
+                .resolucao { background-color: #cce0ff; } /* azul claro */
+                .conclusao { background-color: #d6ffd6; } /* verde claro */
+                .despacho { background-color: #fff0b3; } /* amarelo claro */
+                .curso { background-color: #ffb3b3; }     /* vermelho claro */
             </style>
         </head>
         <body>
@@ -116,6 +131,7 @@ def mostrar_tabela():
         """
 
         for r in rows:
+            # Formata hora de início
             data_inicio = datetime.strptime(r[0], "%Y-%m-%dT%H:%M:%S").strftime("%d/%m/%Y %H:%M")
             data_up = datetime.strptime(r[7], "%Y-%m-%d %H:%M:%S")
             classe = ""
@@ -125,14 +141,14 @@ def mostrar_tabela():
                 classe = "recente"
 
             # Destacar por estado
-            if r[3] == "Em Despacho":
-                classe = "despacho"
-            elif r[3] == "Em Curso":
-                classe = "curso"
-            elif r[3] == "Em Resolução":
+            if r[3] == "Em Resolução":
                 classe = "resolucao"
             elif r[3] == "Em Conclusão":
                 classe = "conclusao"
+            elif r[3] == "Em Despacho":
+                classe = "despacho"
+            elif r[3] == "Em Curso":
+                classe = "curso"
 
             html += f"""
             <tr class="{classe}">
@@ -151,3 +167,4 @@ def mostrar_tabela():
 
     except Exception as e:
         return HTMLResponse(f"<h2>Erro ao ler DB: {e}</h2>", status_code=500)
+
