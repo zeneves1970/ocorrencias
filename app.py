@@ -13,12 +13,13 @@ HIGHLIGHT_DAYS = 1  # destacar ocorrências atualizadas nas últimas 24h
 app = FastAPI()
 
 # --- Função para baixar DB do Dropbox ---
-def baixar_db():
-    token = os.environ.get("DROPBOX_TOKEN")
-    if not token:
-        raise RuntimeError("DROPBOX_TOKEN não definido")
+    def baixar_db():
+    dbx = dropbox.Dropbox(
+        oauth2_refresh_token=os.environ.get("DROPBOX_REFRESH_TOKEN"),
+        app_key=os.environ.get("DROPBOX_APP_KEY"),
+        app_secret=os.environ.get("DROPBOX_APP_SECRET"),
+    )
 
-    dbx = dropbox.Dropbox(token)
     try:
         metadata, res = dbx.files_download(DB_PATH_DROPBOX)
         with open(DB_FILE, "wb") as f:
