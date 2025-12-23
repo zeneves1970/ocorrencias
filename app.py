@@ -56,7 +56,7 @@ def mostrar_tabela():
         conn = sqlite3.connect(DB_FILE)
         c = conn.cursor()
 
-        # Seleciona ocorrências com data_atualizacao para destaque
+        # Seleciona ocorrências únicas (última atualização) e ordena por estado e data
         rows = c.execute("""
             SELECT o.natureza, o.concelho, o.estado,
                    o.operacionais, o.meios_terrestres, o.meios_aereos, o.data_atualizacao
@@ -68,8 +68,16 @@ def mostrar_tabela():
             ) ult
             ON o.objectid = ult.objectid
             AND o.data_atualizacao = ult.max_data
-            ORDER BY o.data_atualizacao DESC
-         """).fetchall()
+            ORDER BY
+                CASE o.estado
+                    WHEN 'Em despacho' THEN 1
+                    WHEN 'Em curso' THEN 2
+                    WHEN 'Em resolução' THEN 3
+                    WHEN 'Em conclusão' THEN 4
+                    ELSE 5
+                END,
+                o.data_atualizacao DESC
+        """).fetchall()
 
         conn.close()
 
@@ -106,7 +114,6 @@ def mostrar_tabela():
         """
 
         for r in rows:
-            # r[6] = data_atualizacao
             data_up = datetime.strptime(r[6], "%Y-%m-%d %H:%M:%S")
             classe = ""
 
@@ -125,9 +132,9 @@ def mostrar_tabela():
                 <td>{r[0]}</td>
                 <td>{r[1]}</td>
                 <td>{r[2]}</td>
-                <td>{r[3]}</td>  <!-- Operacionais -->
-                <td>{r[4]}</td>  <!-- Meios T. -->
-                <td>{r[5]}</td>  <!-- Meios A. -->
+                <td>{r[3]}</td>
+                <td>{r[4]}</td>
+                <td>{r[5]}</td>
             </tr>
             """
 
