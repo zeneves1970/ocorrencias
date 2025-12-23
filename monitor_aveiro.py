@@ -38,9 +38,9 @@ def baixar_db():
                 natureza TEXT,
                 concelho TEXT,
                 estado TEXT,
+                operacionais INTEGER,
                 meios_terrestres INTEGER,
                 meios_aereos INTEGER,
-                operacionais INTEGER,
                 data_atualizacao TIMESTAMP DEFAULT CURRENT_TIMESTAMP
             )
         """)
@@ -66,9 +66,9 @@ CREATE TABLE IF NOT EXISTS ocorrencias (
     natureza TEXT,
     concelho TEXT,
     estado TEXT,
+    operacionais INTEGER,
     meios_terrestres INTEGER,
     meios_aereos INTEGER,
-    operacionais INTEGER,
     data_atualizacao TIMESTAMP DEFAULT CURRENT_TIMESTAMP
 )
 """)
@@ -101,18 +101,18 @@ def guardar_ocorrencia_sqlite(attrs):
             natureza=excluded.natureza,
             concelho=excluded.concelho,
             estado=excluded.estado,
+            operacionais=excluded.operacionais,
             meios_terrestres=excluded.meios_terrestres,
             meios_aereos=excluded.meios_aereos,
-            operacionais=excluded.operacionais,
             data_atualizacao=CURRENT_TIMESTAMP
     """, (
         attrs['OBJECTID'],
         attrs.get('Natureza', ''),
         attrs.get('Concelho', ''),
         attrs.get('EstadoAgrupado', ''),
+        attrs.get('Operacionais', 0),
         attrs.get('NumeroMeiosTerrestresEnvolvidos', 0),
-        attrs.get('NumeroMeiosAereosEnvolvidos', 0),
-        attrs.get('Operacionais', 0)
+        attrs.get('NumeroMeiosAereosEnvolvidos', 0)        
     ))
     conn.commit()
 
