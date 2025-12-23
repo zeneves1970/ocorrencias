@@ -32,9 +32,9 @@ def baixar_db():
                 natureza TEXT,
                 concelho TEXT,
                 estado TEXT,
-                operacionais INTEGER,
                 meios_terrestres INTEGER,
                 meios_aereos INTEGER,
+                operacionais INTEGER,
                 data_atualizacao TIMESTAMP DEFAULT CURRENT_TIMESTAMP
             )
         """)
@@ -87,23 +87,24 @@ def mostrar_tabela():
                     <th>Operacionais</th>
                     <th>Meios T.</th>
                     <th>Meios A.</th>
-                    </tr>
+                </tr>
         """
 
-       for r in rows:
-    html += f"""
-    <tr>
-        <td>{r[0]}</td>
-        <td>{r[1]}</td>
-        <td>{r[2]}</td>
-        <td>{r[3]}</td>  <!-- Operacionais -->
-        <td>{r[4]}</td>  <!-- Meios T. -->
-        <td>{r[5]}</td>  <!-- Meios A. -->
-    </tr>
-    """
+        for r in rows:
+            html += f"""
+            <tr>
+                <td>{r[0]}</td>
+                <td>{r[1]}</td>
+                <td>{r[2]}</td>
+                <td>{r[3]}</td>  <!-- Operacionais -->
+                <td>{r[4]}</td>  <!-- Meios T. -->
+                <td>{r[5]}</td>  <!-- Meios A. -->
+            </tr>
+            """
 
         html += "</table></body></html>"
         return html
 
     except Exception as e:
         return HTMLResponse(f"<h2>Erro ao ler DB: {e}</h2>", status_code=500)
+
