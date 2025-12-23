@@ -18,26 +18,26 @@ BASE_PARAMS = {
 DB_FILE = "ocorrencias_aveiro.db"
 DROPBOX_PATH = "/ocorrencias_aveiro.db"
 
-# --- Inicializa Dropbox com refresh token ---
-dbx = dropbox.Dropbox(
-    oauth2_refresh_token=os.environ.get("DROPBOX_REFRESH_TOKEN"),
-    app_key=os.environ.get("DROPBOX_APP_KEY"),
-    app_secret=os.environ.get("DROPBOX_APP_SECRET")
-)
-
 # --- Funções Dropbox ---
 def baixar_db():
+    token = os.environ.get("DROPBOX_REFRESH_TOKEN")
+    app_key = os.environ.get("DROPBOX_APP_KEY")
+    app_secret = os.environ.get("DROPBOX_APP_SECRET")
+    if not token or not app_key or not app_secret:
+        raise RuntimeError("Variáveis DROPBOX_REFRESH_TOKEN, DROPBOX_APP_KEY ou DROPBOX_APP_SECRET não definidas")
+    dbx = dropbox.Dropbox(oauth2_refresh_token=token, app_key=app_key, app_secret=app_secret)
     try:
         metadata, res = dbx.files_download(DROPBOX_PATH)
         with open(DB_FILE, "wb") as f:
             f.write(res.content)
         print("📥 DB descarregada do Dropbox")
     except dropbox.exceptions.ApiError:
-        print("⚠️ DB não encontrada. Será criada localmente")
+        print("⚠️ DB não encontrada no Dropbox. Será criada localmente")
         conn = sqlite3.connect(DB_FILE)
         conn.execute("""
             CREATE TABLE IF NOT EXISTS ocorrencias (
                 objectid INTEGER PRIMARY KEY,
+                DataInicioOcorrencia TEXT,
                 natureza TEXT,
                 concelho TEXT,
                 estado TEXT,
@@ -51,17 +51,22 @@ def baixar_db():
         conn.close()
 
 def enviar_db():
+    token = os.environ.get("DROPBOX_REFRESH_TOKEN")
+    app_key = os.environ.get("DROPBOX_APP_KEY")
+    app_secret = os.environ.get("DROPBOX_APP_SECRET")
+    dbx = dropbox.Dropbox(oauth2_refresh_token=token, app_key=app_key, app_secret=app_secret)
     with open(DB_FILE, "rb") as f:
         dbx.files_upload(f.read(), DROPBOX_PATH, mode=dropbox.files.WriteMode.overwrite)
     print("📤 DB enviada para o Dropbox")
 
-# --- Inicialização DB local ---
+# --- Inicialização DB ---
 baixar_db()
 conn = sqlite3.connect(DB_FILE)
 c = conn.cursor()
 c.execute("""
 CREATE TABLE IF NOT EXISTS ocorrencias (
     objectid INTEGER PRIMARY KEY,
+    DataInicioOcorrencia TEXT,
     natureza TEXT,
     concelho TEXT,
     estado TEXT,
@@ -94,9 +99,10 @@ def obter_ocorrencias():
 def guardar_ocorrencia_sqlite(attrs):
     c.execute("""
         INSERT INTO ocorrencias
-        (objectid, natureza, concelho, estado, operacionais, meios_terrestres, meios_aereos, data_atualizacao)
-        VALUES (?, ?, ?, ?, ?, ?, ?, CURRENT_TIMESTAMP)
+        (objectid, DataInicioOcorrencia, natureza, concelho, estado, operacionais, meios_terrestres, meios_aereos, data_atualizacao)
+        VALUES (?, ?, ?, ?, ?, ?, ?, ?, CURRENT_TIMESTAMP)
         ON CONFLICT(objectid) DO UPDATE SET
+            DataInicioOcorrencia=excluded.DataInicioOcorrencia,
             natureza=excluded.natureza,
             concelho=excluded.concelho,
             estado=excluded.estado,
@@ -106,6 +112,7 @@ def guardar_ocorrencia_sqlite(attrs):
             data_atualizacao=CURRENT_TIMESTAMP
     """, (
         attrs['OBJECTID'],
+        attrs.get('DataInicioOcorrencia', None),  # <--- NOVO campo
         attrs.get('Natureza', ''),
         attrs.get('Concelho', ''),
         attrs.get('EstadoAgrupado', ''),
