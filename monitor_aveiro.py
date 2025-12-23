@@ -25,6 +25,10 @@ dbx = dropbox.Dropbox(
     app_secret=os.environ.get("DROPBOX_APP_SECRET")
 )
 
+print("DROPBOX_REFRESH_TOKEN:", os.environ.get("DROPBOX_REFRESH_TOKEN"))
+print("DROPBOX_APP_KEY:", os.environ.get("DROPBOX_APP_KEY"))
+print("DROPBOX_APP_SECRET:", os.environ.get("DROPBOX_APP_SECRET"))
+
 # --- Funções Dropbox ---
 def baixar_db():
     try:
