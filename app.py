@@ -58,12 +58,18 @@ def mostrar_tabela():
 
         # Seleciona ocorrências com data_atualizacao para destaque
         rows = c.execute("""
-            SELECT natureza, concelho, estado,
-                   operacionais, meios_terrestres, meios_aereos, data_atualizacao
-            FROM ocorrencias
-            GROUP BY objectid
-            ORDER BY data_atualizacao DESC
-        """).fetchall()
+            SELECT o.natureza, o.concelho, o.estado,
+                   o.operacionais, o.meios_terrestres, o.meios_aereos, o.data_atualizacao
+            FROM ocorrencias o
+            JOIN (
+                SELECT objectid, MAX(data_atualizacao) AS max_data
+                FROM ocorrencias
+                GROUP BY objectid
+            ) ult
+            ON o.objectid = ult.objectid
+            AND o.data_atualizacao = ult.max_data
+            ORDER BY o.data_atualizacao DESC
+         """).fetchall()
 
         conn.close()
 
