@@ -100,35 +100,27 @@ def mostrar_tabela():
 
         # --- Monta tabela HTML ---
         html = """
-        <html>
-        <head>
-            <title>Ocorrências – Aveiro</title>
-            <meta http-equiv="refresh" content="60">
-            <style>
-                body { font-family: Arial; }
-                table { border-collapse: collapse; width: 100%; }
-                th, td { border: 1px solid #ccc; padding: 6px; }
-                th { background: #f2f2f2; }
-                .recente { background-color: #fffbcc; }   /* amarelo claro */
-                .resolucao { background-color: #cce0ff; } /* azul claro */
-                .conclusao { background-color: #d6ffd6; } /* verde claro */
-                .despacho { background-color: #fff0b3; } /* amarelo claro */
-                .curso { background-color: #ffb3b3; }     /* vermelho claro */
-            </style>
-        </head>
-        <body>
-            <h2>Ocorrências – Distrito de Aveiro</h2>
-            <table>
-                <tr>
-                    <th>Hora Início</th>
-                    <th>Natureza</th>
-                    <th>Concelho</th>
-                    <th>Estado</th>
-                    <th>Operacionais</th>
-                    <th>Meios T.</th>
-                    <th>Meios A.</th>
-                </tr>
-        """
+<html>
+<head>
+    <title>Ocorrências – Aveiro</title>
+    <meta http-equiv="refresh" content="60">
+    <link rel="icon" type="image/x-icon" href="/favicon.ico">  <!-- adiciona o favicon -->
+    <style>
+        body { font-family: Arial; }
+        table { border-collapse: collapse; width: 100%; }
+        th, td { border: 1px solid #ccc; padding: 6px; }
+        th { background: #f2f2f2; }
+        .recente { background-color: #fffbcc; }   /* amarelo claro */
+        .resolucao { background-color: #e0e0ff; } /* azul claro */
+        .conclusao { background-color: #d6ffd6; } /* verde claro */
+        .curso { background-color: #ffb3b3; }     /* vermelho claro */
+        .despacho { background-color: #fff0b3; }  /* amarelo claro */
+    </style>
+</head>
+<body>
+    <h2>Ocorrências – Distrito de Aveiro</h2>
+    ...
+"""
 
         for r in rows:
             # Formata hora de início
