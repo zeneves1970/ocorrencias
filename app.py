@@ -32,9 +32,9 @@ def baixar_db():
                 natureza TEXT,
                 concelho TEXT,
                 estado TEXT,
+                operacionais INTEGER,
                 meios_terrestres INTEGER,
                 meios_aereos INTEGER,
-                operacionais INTEGER,
                 data_atualizacao TIMESTAMP DEFAULT CURRENT_TIMESTAMP
             )
         """)
