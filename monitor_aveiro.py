@@ -4,6 +4,11 @@ import time
 import os
 import dropbox
 
+# --- TESTE: Verifica se as variáveis de ambiente estão disponíveis ---
+print("DROPBOX_REFRESH_TOKEN:", os.environ.get("DROPBOX_REFRESH_TOKEN"))
+print("DROPBOX_APP_KEY:", os.environ.get("DROPBOX_APP_KEY"))
+print("DROPBOX_APP_SECRET:", os.environ.get("DROPBOX_APP_SECRET"))
+
 # --- Configurações ---
 URL = "https://prociv-agserver.geomai.mai.gov.pt/arcgis/rest/services/Ocorrencias_Base/FeatureServer/0/query"
 HEADERS = {"User-Agent": "Mozilla/5.0", "Accept": "application/json"}
@@ -24,10 +29,6 @@ dbx = dropbox.Dropbox(
     app_key=os.environ.get("DROPBOX_APP_KEY"),
     app_secret=os.environ.get("DROPBOX_APP_SECRET")
 )
-
-print("DROPBOX_REFRESH_TOKEN:", os.environ.get("DROPBOX_REFRESH_TOKEN"))
-print("DROPBOX_APP_KEY:", os.environ.get("DROPBOX_APP_KEY"))
-print("DROPBOX_APP_SECRET:", os.environ.get("DROPBOX_APP_SECRET"))
 
 # --- Funções Dropbox ---
 def baixar_db():
