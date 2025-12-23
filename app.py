@@ -13,7 +13,7 @@ HIGHLIGHT_DAYS = 1  # destacar ocorrências atualizadas nas últimas 24h
 app = FastAPI()
 
 # --- Função para baixar DB do Dropbox ---
-    def baixar_db():
+def baixar_db():
     dbx = dropbox.Dropbox(
         oauth2_refresh_token=os.environ.get("DROPBOX_REFRESH_TOKEN"),
         app_key=os.environ.get("DROPBOX_APP_KEY"),
@@ -42,6 +42,7 @@ app = FastAPI()
         """)
         conn.commit()
         conn.close()
+
 
 # --- Rota principal ---
 @app.get("/", response_class=HTMLResponse)
