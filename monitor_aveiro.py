@@ -95,7 +95,7 @@ def obter_ocorrencias():
 def guardar_ocorrencia_sqlite(attrs):
     c.execute("""
         INSERT INTO ocorrencias
-        (objectid, natureza, concelho, estado, meios_terrestres, meios_aereos, operacionais, data_atualizacao)
+        (objectid, natureza, concelho, estado, operacionais, meios_terrestres, meios_aereos, data_atualizacao)
         VALUES (?, ?, ?, ?, ?, ?, ?, CURRENT_TIMESTAMP)
         ON CONFLICT(objectid) DO UPDATE SET
             natureza=excluded.natureza,
@@ -112,7 +112,7 @@ def guardar_ocorrencia_sqlite(attrs):
         attrs.get('EstadoAgrupado', ''),
         attrs.get('Operacionais', 0),
         attrs.get('NumeroMeiosTerrestresEnvolvidos', 0),
-        attrs.get('NumeroMeiosAereosEnvolvidos', 0)        
+        attrs.get('NumeroMeiosAereosEnvolvidos', 0)
     ))
     conn.commit()
 
@@ -129,7 +129,7 @@ def monitorizar():
         attrs = o["attributes"]
         guardar_ocorrencia_sqlite(attrs)
 
-    apagar_antigas()  # remove registros com mais de 10 dias
+    apagar_antigas()
     enviar_db()
     print(f"✔️ {len(ocorrencias)} ocorrências atualizadas e antigas removidas.")
 
