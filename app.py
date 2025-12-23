@@ -90,17 +90,17 @@ def mostrar_tabela():
                     </tr>
         """
 
-        for r in rows:
-            html += f"""
-            <tr>
-                <td>{r[0]}</td>
-                <td>{r[1]}</td>
-                <td>{r[2]}</td>
-                <td>{r[3]}</td>
-                <td>{r[4]}</td>
-                <td>{r[5]}</td>
-            </tr>
-            """
+       for r in rows:
+    html += f"""
+    <tr>
+        <td>{r[0]}</td>
+        <td>{r[1]}</td>
+        <td>{r[2]}</td>
+        <td>{r[3]}</td>  <!-- Operacionais -->
+        <td>{r[4]}</td>  <!-- Meios T. -->
+        <td>{r[5]}</td>  <!-- Meios A. -->
+    </tr>
+    """
 
         html += "</table></body></html>"
         return html
