@@ -58,25 +58,35 @@ def mostrar_tabela():
 
         # Seleciona apenas a última atualização de cada objectid
         rows = c.execute("""
-            SELECT o.DataInicioOcorrencia, o.natureza, o.concelho, o.estado,
-                   o.operacionais, o.meios_terrestres, o.meios_aereos, o.data_atualizacao
-            FROM ocorrencias o
-            JOIN (
-                SELECT objectid, MAX(data_atualizacao) AS max_data
-                FROM ocorrencias
-                GROUP BY objectid
-            ) ult
-            ON o.objectid = ult.objectid
-            AND o.data_atualizacao = ult.max_data
-            ORDER BY
-                CASE o.estado
-                    WHEN 'Em Despacho' THEN 1
-                    WHEN 'Em Curso' THEN 2
-                    WHEN 'Em Resolução' THEN 3
-                    WHEN 'Em Conclusão' THEN 4
-                    ELSE 5
-                END,
-                o.data_atualizacao DESC
+    SELECT
+        DataInicioOcorrencia,
+        natureza,
+        concelho,
+        estado,
+        operacionais,
+        meios_terrestres,
+        meios_aereos,
+        data_atualizacao
+    FROM (
+        SELECT *,
+               ROW_NUMBER() OVER (
+                   PARTITION BY objectid
+                   ORDER BY data_atualizacao DESC
+               ) AS rn
+        FROM ocorrencias
+    )
+    WHERE rn = 1
+    ORDER BY
+        CASE estado
+            WHEN 'Em Despacho' THEN 1
+            WHEN 'Em Curso' THEN 2
+            WHEN 'Em Resolução' THEN 3
+            WHEN 'Em Conclusão' THEN 4
+            ELSE 5
+        END,
+        data_atualizacao DESC
+""").fetchall()
+
         """).fetchall()
 
         conn.close()
