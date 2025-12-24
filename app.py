@@ -41,7 +41,6 @@ def mostrar_tabela():
         # 🔹 Estado mais recente por ocorrência (SEM DUPLICADOS)
         rows = c.execute("""
             SELECT
-                objectid,
                 DataInicioOcorrencia,
                 natureza,
                 concelho,
@@ -53,7 +52,7 @@ def mostrar_tabela():
             FROM (
                 SELECT *,
                        ROW_NUMBER() OVER (
-                           PARTITION BY objectid
+                           PARTITION BY DataInicioOcorrencia, natureza, concelho
                            ORDER BY data_atualizacao DESC
                        ) AS rn
                 FROM ocorrencias
