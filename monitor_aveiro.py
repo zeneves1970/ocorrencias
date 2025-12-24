@@ -8,7 +8,12 @@ import dropbox
 URL = "https://prociv-agserver.geomai.mai.gov.pt/arcgis/rest/services/Ocorrencias_Base/FeatureServer/0/query"
 HEADERS = {"User-Agent": "Mozilla/5.0", "Accept": "application/json"}
 BASE_PARAMS = {
-    "where": "CSREPC='Região de Aveiro'",
+    "where": """
+        CSREPC='Região de Aveiro'
+        OR Concelho='Oliveira de Azeméis'
+        OR Concelho='Santa Maria da Feira'
+        OR Concelho='Arouca'
+    """,
     "outFields": "*",
     "returnGeometry": "false",
     "f": "json",
