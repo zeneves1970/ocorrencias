@@ -1,10 +1,10 @@
 from fastapi import FastAPI
 from fastapi.responses import HTMLResponse
+from fastapi.staticfiles import StaticFiles
 import sqlite3
 import os
 import dropbox
 from datetime import datetime, timedelta
-import time
 
 # --- Configurações ---
 DB_FILE = "ocorrencias_aveiro.db"
@@ -13,21 +13,11 @@ HIGHLIGHT_DAYS = 1  # destacar ocorrências atualizadas nas últimas 24h
 
 app = FastAPI()
 
-# --- Função para baixar DB do Dropbox (com cache local) ---
+# --- Serve arquivos estáticos (favicon, CSS, etc.) ---
+app.mount("/static", StaticFiles(directory="static"), name="static")
+
+# --- Função para baixar DB do Dropbox ---
 def baixar_db():
-    atualizar = False
-    if not os.path.exists(DB_FILE):
-        atualizar = True
-    else:
-        # verifica se o DB local tem mais de 5 minutos
-        idade_segundos = time.time() - os.path.getmtime(DB_FILE)
-        if idade_segundos > 300:  # 5 minutos
-            atualizar = True
-
-    if not atualizar:
-        print("📂 DB local está atualizada, não precisa baixar")
-        return
-
     dbx = dropbox.Dropbox(
         oauth2_refresh_token=os.environ.get("DROPBOX_REFRESH_TOKEN"),
         app_key=os.environ.get("DROPBOX_APP_KEY"),
@@ -92,39 +82,53 @@ def mostrar_tabela():
                 END,
                 o.data_atualizacao DESC
         """).fetchall()
-
         conn.close()
 
         agora = datetime.utcnow()
         destaque_limite = agora - timedelta(days=HIGHLIGHT_DAYS)
 
         # --- Monta tabela HTML ---
-        html = """
-<html>
-<head>
-    <title>Ocorrências – Aveiro</title>
-    <meta http-equiv="refresh" content="60">
-    <link rel="icon" type="image/x-icon" href="/favicon.ico">  <!-- adiciona o favicon -->
-    <style>
-        body { font-family: Arial; }
-        table { border-collapse: collapse; width: 100%; }
-        th, td { border: 1px solid #ccc; padding: 6px; }
-        th { background: #f2f2f2; }
-        .recente { background-color: #fffbcc; }   /* amarelo claro */
-        .resolucao { background-color: #e0e0ff; } /* azul claro */
-        .conclusao { background-color: #d6ffd6; } /* verde claro */
-        .curso { background-color: #ffb3b3; }     /* vermelho claro */
-        .despacho { background-color: #fff0b3; }  /* amarelo claro */
-    </style>
-</head>
-<body>
-    <h2>Ocorrências – Distrito de Aveiro</h2>
-    ...
-"""
+        html = f"""
+        <html>
+        <head>
+            <title>Ocorrências – Aveiro</title>
+            <meta http-equiv="refresh" content="60">
+            <link rel="icon" type="image/x-icon" href="/static/favicon.ico">
+            <style>
+                body {{ font-family: Arial; }}
+                table {{ border-collapse: collapse; width: 100%; }}
+                th, td {{ border: 1px solid #ccc; padding: 6px; }}
+                th {{ background: #f2f2f2; }}
+                .recente {{ background-color: #fffbcc; }}   /* amarelo claro */
+                .despacho {{ background-color: #ffff99; }}  /* amarelo */
+                .curso {{ background-color: #ff9999; }}     /* vermelho */
+                .resolucao {{ background-color: #99ccff; }} /* azul */
+                .conclusao {{ background-color: #d6ffd6; }} /* verde */
+            </style>
+        </head>
+        <body>
+            <h2>Ocorrências – Distrito de Aveiro</h2>
+            <table>
+                <tr>
+                    <th>Hora Início</th>
+                    <th>Natureza</th>
+                    <th>Concelho</th>
+                    <th>Estado</th>
+                    <th>Operacionais</th>
+                    <th>Meios T.</th>
+                    <th>Meios A.</th>
+                </tr>
+        """
+
+        if not rows:
+            html += """
+            <tr>
+                <td colspan="7" style="text-align:center;">Não há ocorrências no momento</td>
+            </tr>
+            """
 
         for r in rows:
-            # Formata hora de início
-            data_inicio = datetime.strptime(r[0], "%Y-%m-%dT%H:%M:%S").strftime("%d/%m/%Y %H:%M")
+            data_inicio = datetime.strptime(r[0], "%Y-%m-%dT%H:%M:%S").strftime("%d/%m/%Y %H:%M") if r[0] else "-"
             data_up = datetime.strptime(r[7], "%Y-%m-%d %H:%M:%S")
             classe = ""
 
@@ -133,14 +137,14 @@ def mostrar_tabela():
                 classe = "recente"
 
             # Destacar por estado
-            if r[3] == "Em Resolução":
-                classe = "resolucao"
-            elif r[3] == "Em Conclusão":
-                classe = "conclusao"
-            elif r[3] == "Em Despacho":
+            if r[3] == "Em Despacho":
                 classe = "despacho"
             elif r[3] == "Em Curso":
                 classe = "curso"
+            elif r[3] == "Em Resolução":
+                classe = "resolucao"
+            elif r[3] == "Em Conclusão":
+                classe = "conclusao"
 
             html += f"""
             <tr class="{classe}">
@@ -148,9 +152,9 @@ def mostrar_tabela():
                 <td>{r[1]}</td>
                 <td>{r[2]}</td>
                 <td>{r[3]}</td>
-                <td>{r[4]}</td>  <!-- Operacionais -->
-                <td>{r[5]}</td>  <!-- Meios T. -->
-                <td>{r[6]}</td>  <!-- Meios A. -->
+                <td>{r[4]}</td>
+                <td>{r[5]}</td>
+                <td>{r[6]}</td>
             </tr>
             """
 
@@ -159,4 +163,3 @@ def mostrar_tabela():
 
     except Exception as e:
         return HTMLResponse(f"<h2>Erro ao ler DB: {e}</h2>", status_code=500)
-
