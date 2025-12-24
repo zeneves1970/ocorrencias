@@ -126,7 +126,6 @@ def mostrar_tabela():
                 .curso      { background-color: #ffd6d6; }  /* vermelho */
                 .resolucao  { background-color: #d6e4ff; }  /* azul */
                 .conclusao  { background-color: #d6ffd6; }  /* verde */
-                .recente    { outline: 2px solid #ffcc00; }
             </style>
             <script>
                 function toggleHist(id) {
@@ -166,9 +165,7 @@ def mostrar_tabela():
             elif r[4] == "Em Conclusão":
                 classe = "conclusao"
 
-            if data_up >= destaque_limite:
-                classe += " recente"
-
+       
             html += f"""
             <tr class="{classe}" onclick="toggleHist('{objectid}')">
                 <td>{data_inicio}</td>
