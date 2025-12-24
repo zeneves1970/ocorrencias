@@ -13,6 +13,7 @@ BASE_PARAMS = {
         OR Concelho='Oliveira de Azeméis'
         OR Concelho='Santa Maria da Feira'
         OR Concelho='Arouca'
+        OR Concelho='Espinho'
     """,
     "outFields": "*",
     "returnGeometry": "false",
