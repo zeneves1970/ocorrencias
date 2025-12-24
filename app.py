@@ -1,6 +1,5 @@
 from fastapi import FastAPI
 from fastapi.responses import HTMLResponse
-from fastapi.staticfiles import StaticFiles
 import sqlite3
 import os
 import dropbox
@@ -12,9 +11,6 @@ DB_PATH_DROPBOX = "/ocorrencias_aveiro.db"
 HIGHLIGHT_DAYS = 1  # destacar ocorrências atualizadas nas últimas 24h
 
 app = FastAPI()
-
-# --- Serve arquivos estáticos (favicon, CSS, etc.) ---
-app.mount("/static", StaticFiles(directory="static"), name="static")
 
 # --- Função para baixar DB do Dropbox ---
 def baixar_db():
@@ -82,28 +78,28 @@ def mostrar_tabela():
                 END,
                 o.data_atualizacao DESC
         """).fetchall()
+
         conn.close()
 
         agora = datetime.utcnow()
         destaque_limite = agora - timedelta(days=HIGHLIGHT_DAYS)
 
         # --- Monta tabela HTML ---
-        html = f"""
+        html = """
         <html>
         <head>
             <title>Ocorrências – Aveiro</title>
             <meta http-equiv="refresh" content="60">
-            <link rel="icon" type="image/x-icon" href="/static/favicon.ico">
             <style>
-                body {{ font-family: Arial; }}
-                table {{ border-collapse: collapse; width: 100%; }}
-                th, td {{ border: 1px solid #ccc; padding: 6px; }}
-                th {{ background: #f2f2f2; }}
-                .recente {{ background-color: #fffbcc; }}   /* amarelo claro */
-                .despacho {{ background-color: #ffff99; }}  /* amarelo */
-                .curso {{ background-color: #ff9999; }}     /* vermelho */
-                .resolucao {{ background-color: #99ccff; }} /* azul */
-                .conclusao {{ background-color: #d6ffd6; }} /* verde */
+                body { font-family: Arial; }
+                table { border-collapse: collapse; width: 100%; }
+                th, td { border: 1px solid #ccc; padding: 6px; }
+                th { background: #f2f2f2; }
+                .recente { background-color: #fffbcc; }   /* amarelo claro */
+                .despacho { background-color: #ffff99; } /* Em Despacho – amarelo */
+                .curso { background-color: #ff6666; }     /* Em Curso – vermelho */
+                .resolucao { background-color: #6699ff; } /* Em Resolução – azul */
+                .conclusao { background-color: #99ff99; } /* Em Conclusão – verde */
             </style>
         </head>
         <body>
@@ -120,15 +116,9 @@ def mostrar_tabela():
                 </tr>
         """
 
-        if not rows:
-            html += """
-            <tr>
-                <td colspan="7" style="text-align:center;">Não há ocorrências no momento</td>
-            </tr>
-            """
-
         for r in rows:
-            data_inicio = datetime.strptime(r[0], "%Y-%m-%dT%H:%M:%S").strftime("%d/%m/%Y %H:%M") if r[0] else "-"
+            # Formata hora de início
+            data_inicio = datetime.strptime(r[0], "%Y-%m-%dT%H:%M:%S").strftime("%d/%m/%Y %H:%M")
             data_up = datetime.strptime(r[7], "%Y-%m-%d %H:%M:%S")
             classe = ""
 
