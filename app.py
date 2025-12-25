@@ -102,10 +102,10 @@ def mostrar_tabela():
                 th, td { border: 1px solid #ccc; padding: 6px; }
                 th { background: #f2f2f2; }
 
-                .despacho   { background-color: #fff3b0; }
-                .curso      { background-color: #ffd6d6; }
-                .resolucao  { background-color: #d6e4ff; }
-                .conclusao  { background-color: #d6ffd6; }
+                .despacho   { background-color: #ffff00; }
+                .curso      { background-color: #ff0000; }
+                .resolucao  { background-color: #1e90ff; }
+                .conclusao  { background-color: #32cd32; }
             </style>
         </head>
         <body>
