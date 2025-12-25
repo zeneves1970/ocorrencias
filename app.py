@@ -14,9 +14,18 @@ INCLUIR_CONCELHOS = [
     "Albergaria-a-Velha",
     "Águeda",
     "Ílhavo",
+    "Estarreja",
+    "Murtosa",
+    "Sever do Vouga",
+    "Ovar",
+    "Oliveira do Bairro",
+    "Anadia",
+    "São João da Madeira",
+    "Castelo de Paiva",
     "Oliveira de Azeméis",
     "Santa Maria da Feira",
     "Arouca",
+    "Vale de Cambra",
     "Espinho"
 ]
 
