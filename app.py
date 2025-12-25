@@ -11,6 +11,9 @@ DB_PATH_DROPBOX = "/ocorrencias_aveiro.db"
 
 INCLUIR_CONCELHOS = [
     "Aveiro",
+    "Albergaria-a-Velha",
+    "Águeda",
+    "Ílhavo",
     "Oliveira de Azeméis",
     "Santa Maria da Feira",
     "Arouca",
