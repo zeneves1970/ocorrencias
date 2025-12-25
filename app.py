@@ -97,7 +97,7 @@ def mostrar_tabela():
             </style>
         </head>
         <body>
-            <h2>Ocorrências – Distrito de Aveiro e Concelhos Selecionados</h2>
+            <h2>Ocorrências – Distrito de Aveiro</h2>
             <table>
                 <tr>
                     <th>Hora Início</th>
