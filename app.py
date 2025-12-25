@@ -3,12 +3,19 @@ from fastapi.responses import HTMLResponse
 import sqlite3
 import os
 import dropbox
-from collections import defaultdict
+from datetime import datetime
 
 # --- Configurações ---
 DB_FILE = "ocorrencias_aveiro.db"
 DB_PATH_DROPBOX = "/ocorrencias_aveiro.db"
-INCLUIR_CONCELHOS = ["Aveiro", "Oliveira de Azeméis", "Santa Maria da Feira", "Arouca", "Espinho"]
+
+INCLUIR_CONCELHOS = [
+    "Aveiro",
+    "Oliveira de Azeméis",
+    "Santa Maria da Feira",
+    "Arouca",
+    "Espinho"
+]
 
 app = FastAPI()
 
@@ -20,29 +27,9 @@ def baixar_db():
         app_secret=os.environ.get("DROPBOX_APP_SECRET"),
     )
 
-    try:
-        metadata, res = dbx.files_download(DB_PATH_DROPBOX)
-        with open(DB_FILE, "wb") as f:
-            f.write(res.content)
-        print("📥 DB descarregada do Dropbox")
-    except dropbox.exceptions.ApiError:
-        print("⚠️ DB não encontrada no Dropbox. Será criada localmente")
-        conn = sqlite3.connect(DB_FILE)
-        conn.execute("""
-            CREATE TABLE IF NOT EXISTS ocorrencias (
-                objectid INTEGER PRIMARY KEY,
-                DataInicioOcorrencia TEXT,
-                natureza TEXT,
-                concelho TEXT,
-                estado TEXT,
-                operacionais INTEGER,
-                meios_terrestres INTEGER,
-                meios_aereos INTEGER,
-                data_atualizacao TIMESTAMP DEFAULT CURRENT_TIMESTAMP
-            )
-        """)
-        conn.commit()
-        conn.close()
+    metadata, res = dbx.files_download(DB_PATH_DROPBOX)
+    with open(DB_FILE, "wb") as f:
+        f.write(res.content)
 
 # --- Rota principal ---
 @app.get("/", response_class=HTMLResponse)
@@ -56,11 +43,10 @@ def mostrar_tabela():
         conn = sqlite3.connect(DB_FILE)
         c = conn.cursor()
 
-        # 🔹 Estado mais recente por ocorrência (SEM DUPLICADOS) e apenas concelhos selecionados
         placeholders = ",".join("?" for _ in INCLUIR_CONCELHOS)
-        query = f"""
+
+        rows = c.execute(f"""
             SELECT
-                objectid,
                 DataInicioOcorrencia,
                 natureza,
                 concelho,
@@ -72,7 +58,7 @@ def mostrar_tabela():
             FROM (
                 SELECT *,
                        ROW_NUMBER() OVER (
-                           PARTITION BY objectid
+                           PARTITION BY DataInicioOcorrencia, natureza, concelho
                            ORDER BY data_atualizacao DESC
                        ) AS rn
                 FROM ocorrencias
@@ -88,27 +74,11 @@ def mostrar_tabela():
                     ELSE 5
                 END,
                 data_atualizacao DESC
-        """
-        rows = c.execute(query, INCLUIR_CONCELHOS).fetchall()
-
-        # 🔹 Histórico completo
-        hist = c.execute(f"""
-            SELECT objectid, estado, operacionais, meios_terrestres, meios_aereos, data_atualizacao
-            FROM ocorrencias
-            WHERE concelho IN ({placeholders})
-            ORDER BY data_atualizacao DESC
         """, INCLUIR_CONCELHOS).fetchall()
 
         conn.close()
 
-        hist_por_id = defaultdict(list)
-        for h in hist:
-            hist_por_id[h[0]].append(h)
-
-        agora = datetime.utcnow()
-        destaque_limite = agora - timedelta(days=HIGHLIGHT_DAYS)
-
-        # --- Monta HTML ---
+        # --- HTML ---
         html = """
         <html>
         <head>
@@ -119,20 +89,12 @@ def mostrar_tabela():
                 table { border-collapse: collapse; width: 100%; }
                 th, td { border: 1px solid #ccc; padding: 6px; }
                 th { background: #f2f2f2; }
-                tr { cursor: pointer; }
-                .despacho   { background-color: #fff3b0; }  /* amarelo */
-                .curso      { background-color: #ffd6d6; }  /* vermelho */
-                .resolucao  { background-color: #d6e4ff; }  /* azul */
-                .conclusao  { background-color: #d6ffd6; }  /* verde */
+
+                .despacho   { background-color: #fff3b0; }
+                .curso      { background-color: #ffd6d6; }
+                .resolucao  { background-color: #d6e4ff; }
+                .conclusao  { background-color: #d6ffd6; }
             </style>
-            <script>
-                function toggleHist(id) {
-                    const rows = document.querySelectorAll(".hist-" + id);
-                    rows.forEach(r => {
-                        r.style.display = (r.style.display === "none") ? "table-row" : "none";
-                    });
-                }
-            </script>
         </head>
         <body>
             <h2>Ocorrências – Distrito de Aveiro e Concelhos Selecionados</h2>
@@ -149,44 +111,29 @@ def mostrar_tabela():
         """
 
         for r in rows:
-            objectid = r[0]
-            data_inicio = datetime.strptime(r[1], "%Y-%m-%dT%H:%M:%S").strftime("%d/%m/%Y %H:%M")
-            data_up = datetime.strptime(r[8], "%Y-%m-%d %H:%M:%S")
+            data_inicio = datetime.strptime(
+                r[0], "%Y-%m-%dT%H:%M:%S"
+            ).strftime("%d/%m/%Y %H:%M")
 
-            classe = ""
-            if r[4] == "Em Despacho":
-                classe = "despacho"
-            elif r[4] == "Em Curso":
-                classe = "curso"
-            elif r[4] == "Em Resolução":
-                classe = "resolucao"
-            elif r[4] == "Em Conclusão":
-                classe = "conclusao"
+            estado = r[3]
+            classe = {
+                "Em Despacho": "despacho",
+                "Em Curso": "curso",
+                "Em Resolução": "resolucao",
+                "Em Conclusão": "conclusao",
+            }.get(estado, "")
 
-       
             html += f"""
-            <tr class="{classe}" onclick="toggleHist('{objectid}')">
+            <tr class="{classe}">
                 <td>{data_inicio}</td>
+                <td>{r[1]}</td>
                 <td>{r[2]}</td>
-                <td>{r[3]}</td>
+                <td>{estado}</td>
                 <td>{r[4]}</td>
                 <td>{r[5]}</td>
                 <td>{r[6]}</td>
-                <td>{r[7]}</td>
             </tr>
             """
-
-            # 🔹 Histórico de alterações
-            if len(hist_por_id[objectid]) > 1:
-                html += f"""
-                <tr class="hist-{objectid}" style="display:none; background:#fafafa;">
-                    <td colspan="7">
-                        <b>Histórico:</b><br>
-                """
-                for h in hist_por_id[objectid][1:]:
-                    dh = datetime.strptime(h[5], "%Y-%m-%d %H:%M:%S").strftime("%d/%m %H:%M")
-                    html += f"{dh} — {h[1]} — {h[2]} op., {h[3]} T., {h[4]} A.<br>"
-                html += "</td></tr>"
 
         html += "</table></body></html>"
         return html
