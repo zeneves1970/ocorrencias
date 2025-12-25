@@ -3,13 +3,11 @@ from fastapi.responses import HTMLResponse
 import sqlite3
 import os
 import dropbox
-from datetime import datetime, timedelta
 from collections import defaultdict
 
 # --- Configurações ---
 DB_FILE = "ocorrencias_aveiro.db"
 DB_PATH_DROPBOX = "/ocorrencias_aveiro.db"
-HIGHLIGHT_DAYS = 1  # 24h
 INCLUIR_CONCELHOS = ["Aveiro", "Oliveira de Azeméis", "Santa Maria da Feira", "Arouca", "Espinho"]
 
 app = FastAPI()
