@@ -75,10 +75,11 @@ def mostrar_tabela():
                        ) AS rn
                 FROM ocorrencias
                 WHERE concelho IN ({placeholders})
-            )
-            WHERE rn = 1
-            ORDER BY datetime(DataInicioOcorrencia) DESC
-        """, INCLUIR_CONCELHOS).fetchall()
+          AND datetime(DataInicioOcorrencia) >= datetime('now', '-10 days')
+    )
+    WHERE rn = 1
+    ORDER BY datetime(DataInicioOcorrencia) DESC
+""", INCLUIR_CONCELHOS).fetchall()
 
         conn.close()
 
