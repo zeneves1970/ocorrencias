@@ -91,12 +91,25 @@ def mostrar_tabela():
             <title>Ocorrências – Aveiro</title>
             <meta http-equiv="refresh" content="60">
             <style>
-                body { font-family: Arial;
-                margin: 0;
-                padding: 10px;
+                body {
+                    font-family: Arial;
+                    margin: 0;
+                    padding: 10px;
                 }
-                table { border-collapse: collapse; width: 100%; }
-                th, td { border: 1px solid #ccc; padding: 6px; text-align: left; }
+                .tabela-container {
+                    max-height: 80vh;   /* altura visível da tabela */
+                    overflow-y: auto;    /* scroll vertical */
+                    border: 1px solid #ccc;
+                }
+                table {
+                    border-collapse: collapse;
+                    width: 100%;
+                }
+                th, td {
+                    border: 1px solid #ccc;
+                    padding: 6px;
+                    text-align: left;
+                }
                 thead th {
                     background: #f2f2f2;
                     position: sticky;
@@ -112,17 +125,18 @@ def mostrar_tabela():
         </head>
         <body>
             <h2>Ocorrências – Distrito de Aveiro</h2>
-            <table>
-                <thead>
-                    <tr>
-                        <th>Hora Início</th>
-                        <th>Natureza</th>
-                        <th>Concelho</th>
-                        <th>Estado</th>
-                        <th>Operacionais</th>
-                        <th>Meios T.</th>
-                        <th>Meios A.</th>
-                   </tr>
+            <div class="tabela-container">
+                <table>
+                    <thead>
+                        <tr>
+                            <th>Hora Início</th>
+                            <th>Natureza</th>
+                            <th>Concelho</th>
+                            <th>Estado</th>
+                            <th>Operacionais</th>
+                            <th>Meios T.</th>
+                            <th>Meios A.</th>
+                    </tr>
                 </thead>
                 <tbody>
         """
@@ -153,8 +167,9 @@ def mostrar_tabela():
             """
 
         html += """
-                </tbody>
-           </table>
+                    </tbody>
+              </table>
+            </div>
         </body>
         </html>
         """
