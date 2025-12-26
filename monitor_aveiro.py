@@ -194,7 +194,7 @@ def guardar_ocorrencia(attrs):
     if not ja_notificada:
         mensagem = (
             "🚨 <b>Nova ocorrência</b>\n\n"
-            f"🕒 {attrs.get('DataInicioOcorrencia','')}\n"
+            f"🕒 {attrs.get('DataInicioOcorrencia','').replace('T',' ')}\n"
             f"📍 {attrs.get('Concelho','')}\n"
             f"🔥 {attrs.get('Natureza','')}\n"
             f"📊 Estado: {attrs.get('EstadoAgrupado','')}\n"
