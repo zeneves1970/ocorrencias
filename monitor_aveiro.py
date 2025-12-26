@@ -3,6 +3,7 @@ import sqlite3
 import time
 import os
 import dropbox
+from datetime import datetime
 
 # --- Configurações ---
 URL = "https://prociv-agserver.geomai.mai.gov.pt/arcgis/rest/services/Ocorrencias_Base/FeatureServer/0/query"
@@ -14,6 +15,10 @@ BASE_PARAMS = {
         OR Concelho='Santa Maria da Feira'
         OR Concelho='Arouca'
         OR Concelho='Espinho'
+        OR Concelho='Castelo de Paiva'
+        OR Concelho='São João da Madeira'
+        OR Concelho='Vale de Cambra'
+
     """,
     "outFields": "*",
     "returnGeometry": "false",
@@ -24,13 +29,29 @@ BASE_PARAMS = {
 DB_FILE = "ocorrencias_aveiro.db"
 DROPBOX_PATH = "/ocorrencias_aveiro.db"
 
-# --- Funções Dropbox ---
+# --- Telegram ---
+TELEGRAM_TOKEN = os.environ.get("TELEGRAM_TOKEN")
+TELEGRAM_CHAT_ID = os.environ.get("TELEGRAM_CHAT_ID")
+
+def enviar_telegram(mensagem):
+    if not TELEGRAM_TOKEN or not TELEGRAM_CHAT_ID:
+        print("⚠️ Token ou chat_id do Telegram não definidos")
+        return
+    url = f"https://api.telegram.org/bot{TELEGRAM_TOKEN}/sendMessage"
+    payload = {"chat_id": TELEGRAM_CHAT_ID, "text": mensagem, "parse_mode": "HTML"}
+    r = requests.post(url, data=payload)
+    if r.status_code == 200:
+        print("📨 Notificação enviada ao Telegram")
+    else:
+        print(f"❌ Erro ao enviar Telegram: {r.text}")
+
+# --- Dropbox ---
 def baixar_db():
     token = os.environ.get("DROPBOX_REFRESH_TOKEN")
     app_key = os.environ.get("DROPBOX_APP_KEY")
     app_secret = os.environ.get("DROPBOX_APP_SECRET")
     if not token or not app_key or not app_secret:
-        raise RuntimeError("Variáveis DROPBOX_REFRESH_TOKEN, DROPBOX_APP_KEY ou DROPBOX_APP_SECRET não definidas")
+        raise RuntimeError("Variáveis Dropbox não definidas")
     dbx = dropbox.Dropbox(oauth2_refresh_token=token, app_key=app_key, app_secret=app_secret)
     try:
         metadata, res = dbx.files_download(DROPBOX_PATH)
@@ -39,22 +60,6 @@ def baixar_db():
         print("📥 DB descarregada do Dropbox")
     except dropbox.exceptions.ApiError:
         print("⚠️ DB não encontrada no Dropbox. Será criada localmente")
-        conn = sqlite3.connect(DB_FILE)
-        conn.execute("""
-            CREATE TABLE IF NOT EXISTS ocorrencias (
-                objectid INTEGER PRIMARY KEY,
-                DataInicioOcorrencia TEXT,
-                natureza TEXT,
-                concelho TEXT,
-                estado TEXT,
-                operacionais INTEGER,
-                meios_terrestres INTEGER,
-                meios_aereos INTEGER,
-                data_atualizacao TIMESTAMP DEFAULT CURRENT_TIMESTAMP
-            )
-        """)
-        conn.commit()
-        conn.close()
 
 def enviar_db():
     token = os.environ.get("DROPBOX_REFRESH_TOKEN")
@@ -82,9 +87,14 @@ CREATE TABLE IF NOT EXISTS ocorrencias (
     data_atualizacao TIMESTAMP DEFAULT CURRENT_TIMESTAMP
 )
 """)
+c.execute("""
+CREATE TABLE IF NOT EXISTS notificadas (
+    id TEXT PRIMARY KEY
+)
+""")
 conn.commit()
 
-# --- Funções principais ---
+# --- Obter ocorrências ---
 def obter_ocorrencias():
     ocorrencias = []
     offset = 0
@@ -102,6 +112,7 @@ def obter_ocorrencias():
         time.sleep(0.5)
     return ocorrencias
 
+# --- Guardar ocorrência e enviar Telegram se nova ---
 def guardar_ocorrencia_sqlite(attrs):
     c.execute("""
         INSERT INTO ocorrencias
@@ -118,7 +129,7 @@ def guardar_ocorrencia_sqlite(attrs):
             data_atualizacao=CURRENT_TIMESTAMP
     """, (
         attrs['OBJECTID'],
-        attrs.get('DataInicioOcorrencia', None),  # <--- NOVO campo
+        attrs.get('DataInicioOcorrencia', None),
         attrs.get('Natureza', ''),
         attrs.get('Concelho', ''),
         attrs.get('EstadoAgrupado', ''),
@@ -128,6 +139,25 @@ def guardar_ocorrencia_sqlite(attrs):
     ))
     conn.commit()
 
+    # --- Notificação Telegram ---
+    ocorrencia_id = f"{attrs.get('DataInicioOcorrencia','')}|{attrs.get('Natureza','')}|{attrs.get('Concelho','')}"
+    ja_existe = c.execute("SELECT 1 FROM notificadas WHERE id=?", (ocorrencia_id,)).fetchone()
+    if not ja_existe:
+        mensagem = (
+            f"🚨 <b>Nova ocorrência</b>\n\n"
+            f"🕒 {attrs.get('DataInicioOcorrencia','')}\n"
+            f"📍 {attrs.get('Concelho','')}\n"
+            f"🔥 {attrs.get('Natureza','')}\n"
+            f"📊 Estado: {attrs.get('EstadoAgrupado','')}\n"
+            f"👨‍🚒 Operacionais: {attrs.get('Operacionais',0)}\n"
+            f"🚒 Meios T.: {attrs.get('NumeroMeiosTerrestresEnvolvidos',0)}\n"
+            f"🚁 Meios A.: {attrs.get('NumeroMeiosAereosEnvolvidos',0)}"
+        )
+        enviar_telegram(mensagem)
+        c.execute("INSERT INTO notificadas (id) VALUES (?)", (ocorrencia_id,))
+        conn.commit()
+
+# --- Apagar ocorrências antigas ---
 def apagar_antigas():
     c.execute("""
         DELETE FROM ocorrencias
@@ -135,6 +165,7 @@ def apagar_antigas():
     """)
     conn.commit()
 
+# --- Monitorização ---
 def monitorizar():
     ocorrencias = obter_ocorrencias()
     for o in ocorrencias:
@@ -145,7 +176,7 @@ def monitorizar():
     enviar_db()
     print(f"✔️ {len(ocorrencias)} ocorrências atualizadas e antigas removidas.")
 
-# --- Executar monitorização ---
+# --- Executar ---
 if __name__ == "__main__":
     monitorizar()
     conn.close()
