@@ -119,12 +119,11 @@ CREATE TABLE IF NOT EXISTS ocorrencias (
 
 # tabela APENAS para controlo de alertas
 c.execute("""
-CREATE TABLE notificadas (
+CREATE TABLE IF NOT EXISTS notificadas (
     objectid INTEGER PRIMARY KEY
 )
 """)
 conn.commit()
-
 
 # --------------------------------------------------
 # Obter ocorrências da API
