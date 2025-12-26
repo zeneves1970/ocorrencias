@@ -32,21 +32,6 @@ INCLUIR_CONCELHOS = [
 
 app = FastAPI()
 
-TELEGRAM_TOKEN = os.environ.get("TELEGRAM_TOKEN")
-TELEGRAM_CHAT_ID = os.environ.get("TELEGRAM_CHAT_ID")
-
-def enviar_telegram(msg: str):
-    if not TELEGRAM_TOKEN or not TELEGRAM_CHAT_ID:
-        return
-
-    url = f"https://api.telegram.org/bot{TELEGRAM_TOKEN}/sendMessage"
-    payload = {
-        "chat_id": TELEGRAM_CHAT_ID,
-        "text": msg,
-        "parse_mode": "HTML"
-    }
-    requests.post(url, json=payload, timeout=10)
-    
 # --- Download da DB ---
 def baixar_db():
     dbx = dropbox.Dropbox(
