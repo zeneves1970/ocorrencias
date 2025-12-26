@@ -77,15 +77,7 @@ def mostrar_tabela():
                 WHERE concelho IN ({placeholders})
             )
             WHERE rn = 1
-            ORDER BY
-                CASE estado
-                    WHEN 'Em Despacho' THEN 1
-                    WHEN 'Em Curso' THEN 2
-                    WHEN 'Em Resolução' THEN 3
-                    WHEN 'Em Conclusão' THEN 4
-                    ELSE 5
-                END,
-                data_atualizacao DESC
+            ORDER BY datetime(DataInicioOcorrencia) DESC
         """, INCLUIR_CONCELHOS).fetchall()
 
         conn.close()
