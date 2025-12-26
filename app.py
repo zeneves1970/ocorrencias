@@ -91,11 +91,19 @@ def mostrar_tabela():
             <title>Ocorrências – Aveiro</title>
             <meta http-equiv="refresh" content="60">
             <style>
-                body { font-family: Arial; }
+                body { font-family: Arial;
+                margin: 0;
+                padding: 10px;
+                }
                 table { border-collapse: collapse; width: 100%; }
-                th, td { border: 1px solid #ccc; padding: 6px; }
-                th { background: #f2f2f2; }
-
+                th, td { border: 1px solid #ccc; padding: 6px; text-align: left; }
+                thead th {
+                    background: #f2f2f2;
+                    position: sticky;
+                    top: 0;
+                    z-index: 10;
+                    box-shadow: 0 2px 2px rgba(0,0,0,0.1);
+                }
                 .despacho   { background-color: #ffff00; }
                 .curso      { background-color: #ff0000; }
                 .resolucao  { background-color: #1e90ff; }
@@ -105,15 +113,18 @@ def mostrar_tabela():
         <body>
             <h2>Ocorrências – Distrito de Aveiro</h2>
             <table>
-                <tr>
-                    <th>Hora Início</th>
-                    <th>Natureza</th>
-                    <th>Concelho</th>
-                    <th>Estado</th>
-                    <th>Operacionais</th>
-                    <th>Meios T.</th>
-                    <th>Meios A.</th>
-                </tr>
+                <thead>
+                    <tr>
+                        <th>Hora Início</th>
+                        <th>Natureza</th>
+                        <th>Concelho</th>
+                        <th>Estado</th>
+                        <th>Operacionais</th>
+                        <th>Meios T.</th>
+                        <th>Meios A.</th>
+                   </tr>
+                </thead>
+                <tbody>
         """
 
         for r in rows:
@@ -141,7 +152,12 @@ def mostrar_tabela():
             </tr>
             """
 
-        html += "</table></body></html>"
+        html += """
+                </tbody>
+           </table>
+        </body>
+        </html>
+        """
         return html
 
     except Exception as e:
