@@ -43,7 +43,6 @@ DROPBOX_PATH = "/ocorrencias_aveiro.db"
 TELEGRAM_TOKEN = os.environ.get("TELEGRAM_TOKEN")
 TELEGRAM_CHAT_ID = os.environ.get("TELEGRAM_CHAT_ID")
 
-
 def enviar_telegram(mensagem: str):
     if not TELEGRAM_TOKEN or not TELEGRAM_CHAT_ID:
         print("⚠️ Telegram não configurado")
@@ -62,7 +61,6 @@ def enviar_telegram(mensagem: str):
     else:
         print(f"❌ Erro Telegram: {r.text}")
 
-
 # --------------------------------------------------
 # Dropbox
 # --------------------------------------------------
@@ -80,7 +78,6 @@ def baixar_db():
     except dropbox.exceptions.ApiError:
         print("⚠️ DB não existe no Dropbox — será criada localmente")
 
-
 def enviar_db():
     dbx = dropbox.Dropbox(
         oauth2_refresh_token=os.environ.get("DROPBOX_REFRESH_TOKEN"),
@@ -94,7 +91,6 @@ def enviar_db():
             mode=dropbox.files.WriteMode.overwrite
         )
     print("📤 DB enviada para o Dropbox")
-
 
 # --------------------------------------------------
 # Inicialização DB
@@ -131,26 +127,19 @@ conn.commit()
 def obter_ocorrencias():
     ocorrencias = []
     offset = 0
-
     while True:
         params = BASE_PARAMS.copy()
         params["resultOffset"] = offset
-
         r = requests.get(URL, params=params, headers=HEADERS, timeout=20)
         r.raise_for_status()
-
         data = r.json()
         features = data.get("features", [])
-
         if not features:
             break
-
         ocorrencias.extend(features)
         offset += len(features)
         time.sleep(0.5)
-
     return ocorrencias
-
 
 # --------------------------------------------------
 # Guardar ocorrência + alerta Telegram
@@ -158,13 +147,13 @@ def obter_ocorrencias():
 def guardar_ocorrencia(attrs):
     objectid = attrs["OBJECTID"]
 
-    # 1️⃣ verificar se é nova (para alerta)
+    # ✅ Verificar se já foi notificada
     ja_notificada = c.execute(
         "SELECT 1 FROM notificadas WHERE objectid=?",
         (objectid,)
     ).fetchone()
 
-    # 2️⃣ guardar / atualizar ocorrência
+    # 🔹 Guardar / atualizar ocorrência
     c.execute("""
         INSERT INTO ocorrencias
         (objectid, DataInicioOcorrencia, natureza, concelho, estado,
@@ -190,7 +179,7 @@ def guardar_ocorrencia(attrs):
         attrs.get("NumeroMeiosAereosEnvolvidos", 0),
     ))
 
-    # 3️⃣ alerta Telegram só se for nova
+    # 🔹 Alerta apenas se for novo objectid
     if not ja_notificada:
         mensagem = (
             "🚨 <b>Nova ocorrência</b>\n\n"
@@ -204,13 +193,13 @@ def guardar_ocorrencia(attrs):
         )
         enviar_telegram(mensagem)
 
+        # ✅ Marcar como notificado
         c.execute(
             "INSERT INTO notificadas (objectid) VALUES (?)",
             (objectid,)
         )
 
     conn.commit()
-
 
 # --------------------------------------------------
 # Limpeza (10 dias)
@@ -222,21 +211,16 @@ def apagar_antigas():
     """)
     conn.commit()
 
-
 # --------------------------------------------------
 # Monitorização
 # --------------------------------------------------
 def monitorizar():
     ocorrencias = obter_ocorrencias()
-
     for o in ocorrencias:
         guardar_ocorrencia(o["attributes"])
-
     apagar_antigas()
     enviar_db()
-
     print(f"✔️ {len(ocorrencias)} ocorrências processadas")
-
 
 # --------------------------------------------------
 # Execução
