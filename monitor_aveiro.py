@@ -118,7 +118,6 @@ CREATE TABLE IF NOT EXISTS ocorrencias (
 """)
 
 # tabela APENAS para controlo de alertas
-c.execute("DROP TABLE IF EXISTS notificadas")
 c.execute("""
 CREATE TABLE notificadas (
     objectid INTEGER PRIMARY KEY
