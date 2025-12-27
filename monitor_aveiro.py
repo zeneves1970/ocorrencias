@@ -61,7 +61,6 @@ def enviar_telegram(mensagem: str):
     else:
         print(f"❌ Erro Telegram: {r.text}")
 
-
 # --------------------------------------------------
 # Dropbox
 # --------------------------------------------------
@@ -79,7 +78,6 @@ def baixar_db():
     except dropbox.exceptions.ApiError:
         print("⚠️ DB não existe no Dropbox — será criada localmente")
 
-
 def enviar_db():
     dbx = dropbox.Dropbox(
         oauth2_refresh_token=os.environ.get("DROPBOX_REFRESH_TOKEN"),
@@ -93,7 +91,6 @@ def enviar_db():
             mode=dropbox.files.WriteMode.overwrite
         )
     print("📤 DB enviada para o Dropbox")
-
 
 # --------------------------------------------------
 # Inicialização DB
@@ -116,14 +113,13 @@ CREATE TABLE IF NOT EXISTS ocorrencias (
 )
 """)
 
-# tabela APENAS para controlo de alertas
+# Tabela APENAS para controlo de alertas (fingerprint lógico)
 c.execute("""
 CREATE TABLE IF NOT EXISTS notificadas (
-    objectid INTEGER PRIMARY KEY
+    fingerprint TEXT PRIMARY KEY
 )
 """)
 conn.commit()
-
 
 # --------------------------------------------------
 # Obter ocorrências da API
@@ -131,12 +127,14 @@ conn.commit()
 def obter_ocorrencias():
     ocorrencias = []
     offset = 0
+
     while True:
         params = BASE_PARAMS.copy()
         params["resultOffset"] = offset
 
         r = requests.get(URL, params=params, headers=HEADERS, timeout=20)
         r.raise_for_status()
+
         data = r.json()
         features = data.get("features", [])
 
@@ -149,33 +147,26 @@ def obter_ocorrencias():
 
     return ocorrencias
 
-
 # --------------------------------------------------
 # Guardar ocorrência + alerta Telegram
 # --------------------------------------------------
 def guardar_ocorrencia(attrs):
     objectid = attrs["OBJECTID"]
 
-    fingerprint = (
-        attrs.get("DataInicioOcorrencia"),
-        attrs.get("Concelho"),
-        attrs.get("Natureza"),
-    )
+    data_inicio = attrs.get("DataInicioOcorrencia", "")
+    concelho = attrs.get("Concelho", "")
+    natureza = attrs.get("Natureza", "")
 
-    print(
-        "DEBUG | OBJECTID:",
-        objectid,
-        "| fingerprint:",
-        fingerprint
-    )
-    
+    # Fingerprint lógico da ocorrência
+    fingerprint = f"{data_inicio}|{concelho}|{natureza}"
+
     # Verificar se já foi notificada
     ja_notificada = c.execute(
-        "SELECT 1 FROM notificadas WHERE objectid=?",
-        (objectid,)
+        "SELECT 1 FROM notificadas WHERE fingerprint=?",
+        (fingerprint,)
     ).fetchone()
 
-    # Guardar / atualizar ocorrência
+    # Guardar / atualizar ocorrência (OBJECTID continua a ser usado aqui)
     c.execute("""
         INSERT INTO ocorrencias
         (objectid, DataInicioOcorrencia, natureza, concelho, estado,
@@ -192,22 +183,22 @@ def guardar_ocorrencia(attrs):
             data_atualizacao=CURRENT_TIMESTAMP
     """, (
         objectid,
-        attrs.get("DataInicioOcorrencia"),
-        attrs.get("Natureza", ""),
-        attrs.get("Concelho", ""),
+        data_inicio,
+        natureza,
+        concelho,
         attrs.get("EstadoAgrupado", ""),
         attrs.get("Operacionais", 0),
         attrs.get("NumeroMeiosTerrestresEnvolvidos", 0),
         attrs.get("NumeroMeiosAereosEnvolvidos", 0),
     ))
 
-    # Enviar alerta Telegram só se for nova
+    # Enviar alerta Telegram APENAS se fingerprint for novo
     if not ja_notificada:
         mensagem = (
             "🚨 <b>Nova ocorrência</b>\n\n"
-            f"🕒 {attrs.get('DataInicioOcorrencia','').replace('T',' ')}\n"
-            f"📍 {attrs.get('Concelho','')}\n"
-            f"🔥 {attrs.get('Natureza','')}\n"
+            f"🕒 {data_inicio.replace('T',' ')}\n"
+            f"📍 {concelho}\n"
+            f"🔥 {natureza}\n"
             f"📊 Estado: {attrs.get('EstadoAgrupado','')}\n"
             f"👨‍🚒 Operacionais: {attrs.get('Operacionais',0)}\n"
             f"🚒 Meios T.: {attrs.get('NumeroMeiosTerrestresEnvolvidos',0)}\n"
@@ -216,15 +207,14 @@ def guardar_ocorrencia(attrs):
         enviar_telegram(mensagem)
 
         c.execute(
-            "INSERT INTO notificadas (objectid) VALUES (?)",
-            (objectid,)
+            "INSERT INTO notificadas (fingerprint) VALUES (?)",
+            (fingerprint,)
         )
 
     conn.commit()
 
-
 # --------------------------------------------------
-# Limpeza de ocorrências antigas
+# Limpeza (10 dias)
 # --------------------------------------------------
 def apagar_antigas():
     c.execute("""
@@ -233,32 +223,19 @@ def apagar_antigas():
     """)
     conn.commit()
 
-
-# --------------------------------------------------
-# Limpeza de notificações antigas
-# --------------------------------------------------
-def limpar_notificadas():
-    # Remove OBJECTIDs que já não existem na tabela ocorrencias
-    c.execute("""
-        DELETE FROM notificadas
-        WHERE objectid NOT IN (SELECT objectid FROM ocorrencias)
-    """)
-    conn.commit()
-
-
 # --------------------------------------------------
 # Monitorização
 # --------------------------------------------------
 def monitorizar():
     ocorrencias = obter_ocorrencias()
+
     for o in ocorrencias:
         guardar_ocorrencia(o["attributes"])
 
     apagar_antigas()
-    limpar_notificadas()
     enviar_db()
-    print(f"✔️ {len(ocorrencias)} ocorrências processadas")
 
+    print(f"✔️ {len(ocorrencias)} ocorrências processadas")
 
 # --------------------------------------------------
 # Execução
