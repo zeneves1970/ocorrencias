@@ -133,9 +133,9 @@ def mostrar_tabela():
                             <th>Natureza</th>
                             <th>Concelho</th>
                             <th>Estado</th>
-                            <th>👨‍🚒Operacionais</th>
-                            <th>🚒Meios T.</th>
-                            <th>🚁Meios A.</th>
+                            <th>Operacionais</th>
+                            <th>Meios T.</th>
+                            <th>Meios A.</th>
                     </tr>
                 </thead>
                 <tbody>
