@@ -133,9 +133,9 @@ def mostrar_tabela():
                             <th>Natureza</th>
                             <th>Concelho</th>
                             <th>Estado</th>
-                            <th>Operacionais</th>
-                            <th>Meios T.</th>
-                            <th>Meios A.</th>
+                            <th>👨‍🚒Operacionais</th>
+                            <th>🚒Meios T.</th>
+                            <th>🚁Meios A.</th>
                     </tr>
                 </thead>
                 <tbody>
@@ -177,3 +177,4 @@ def mostrar_tabela():
 
     except Exception as e:
         return HTMLResponse(f"<h2>Erro ao ler DB: {e}</h2>", status_code=500)
+
