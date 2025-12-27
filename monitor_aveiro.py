@@ -156,6 +156,19 @@ def obter_ocorrencias():
 def guardar_ocorrencia(attrs):
     objectid = attrs["OBJECTID"]
 
+    fingerprint = (
+        attrs.get("DataInicioOcorrencia"),
+        attrs.get("Concelho"),
+        attrs.get("Natureza"),
+    )
+
+    print(
+        "DEBUG | OBJECTID:",
+        objectid,
+        "| fingerprint:",
+        fingerprint
+    )
+    
     # Verificar se já foi notificada
     ja_notificada = c.execute(
         "SELECT 1 FROM notificadas WHERE objectid=?",
