@@ -246,4 +246,4 @@ if __name__ == "__main__":
             monitorizar()
         except Exception as e:
             print(f"❌ Erro: {e}")
-        time.sleep(120)  # espera 120 segundos antes da próxima execução
+        time.sleep(300)  # espera 300 segundos antes da próxima execução
