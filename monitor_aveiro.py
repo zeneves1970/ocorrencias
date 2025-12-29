@@ -132,7 +132,7 @@ def obter_ocorrencias():
         params = BASE_PARAMS.copy()
         params["resultOffset"] = offset
 
-        r = requests.get(URL, params=params, headers=HEADERS, timeout=20)
+        r = requests.get(URL, params=params, headers=HEADERS, timeout=60)
         r.raise_for_status()
 
         data = r.json()
