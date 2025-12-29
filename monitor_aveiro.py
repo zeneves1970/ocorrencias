@@ -241,13 +241,9 @@ def monitorizar():
 # Execução
 # --------------------------------------------------
 if __name__ == "__main__":
-    INTERVALO = 60  # segundos
-
-    try:
-        while True:
+    while True:
+        try:
             monitorizar()
-            time.sleep(INTERVALO)
-    except KeyboardInterrupt:
-        print("⛔ Script interrompido manualmente")
-    finally:
-        conn.close()
+        except Exception as e:
+            print(f"❌ Erro: {e}")
+        time.sleep(60)  # espera 60 segundos antes da próxima execução
