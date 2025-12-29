@@ -241,5 +241,13 @@ def monitorizar():
 # Execução
 # --------------------------------------------------
 if __name__ == "__main__":
-    monitorizar()
-    conn.close()
+    INTERVALO = 60  # segundos
+
+    try:
+        while True:
+            monitorizar()
+            time.sleep(INTERVALO)
+    except KeyboardInterrupt:
+        print("⛔ Script interrompido manualmente")
+    finally:
+        conn.close()
