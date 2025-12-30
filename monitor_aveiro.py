@@ -3,7 +3,6 @@ import sqlite3
 import time
 import os
 import dropbox
-import subprocess
 from datetime import datetime
 
 # ==================================================
@@ -39,19 +38,7 @@ DROPBOX_PATH = "/ocorrencias_aveiro.db"
 TELEGRAM_TOKEN = os.environ.get("TELEGRAM_TOKEN")
 TELEGRAM_CHAT_ID = os.environ.get("TELEGRAM_CHAT_ID")
 
-INTERVALO = 300  # 5 minutos
-
-# ==================================================
-# WATCHDOG (systemd notify)
-# ==================================================
-def watchdog_ping():
-    try:
-        subprocess.run(
-            ["systemd-notify", "WATCHDOG=1"],
-            check=False
-        )
-    except Exception:
-        pass
+INTERVALO = 300  # segundos (5 minutos)
 
 # ==================================================
 # TELEGRAM
@@ -258,13 +245,10 @@ def monitorizar():
 if __name__ == "__main__":
     print("🚀 Monitor Aveiro iniciado")
 
-    # avisa o systemd que arrancou com sucesso
-    subprocess.run(["systemd-notify", "READY=1"], check=False)
-
     while True:
         try:
             monitorizar()
-            watchdog_ping()
         except Exception as e:
             print(f"❌ Erro crítico: {e}")
+
         time.sleep(INTERVALO)
