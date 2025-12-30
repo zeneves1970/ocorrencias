@@ -66,18 +66,24 @@ def enviar_telegram(mensagem: str):
 # Dropbox
 # --------------------------------------------------
 def baixar_db():
-    dbx = dropbox.Dropbox(
-        oauth2_refresh_token=os.environ.get("DROPBOX_REFRESH_TOKEN"),
-        app_key=os.environ.get("DROPBOX_APP_KEY"),
-        app_secret=os.environ.get("DROPBOX_APP_SECRET"),
-    )
-    try:
-        metadata, res = dbx.files_download(DROPBOX_PATH)
-        with open(DB_FILE, "wb") as f:
-            f.write(res.content)
-        print("📥 DB descarregada do Dropbox")
-    except dropbox.exceptions.ApiError:
-        print("⚠️ DB não existe no Dropbox — será criada localmente")
+    for tentativa in range(3):
+        try:
+            dbx = dropbox.Dropbox(
+                oauth2_refresh_token=os.environ.get("DROPBOX_REFRESH_TOKEN"),
+                app_key=os.environ.get("DROPBOX_APP_KEY"),
+                app_secret=os.environ.get("DROPBOX_APP_SECRET"),
+            )
+            metadata, res = dbx.files_download(DROPBOX_PATH)
+            with open(DB_FILE, "wb") as f:
+                f.write(res.content)
+            print("📥 DB descarregada do Dropbox")
+            return
+        except dropbox.exceptions.ApiError:
+            print("⚠️ DB não existe no Dropbox — será criada localmente")
+            return
+        except Exception as e:
+            print(f"⚠️ Dropbox download erro (tentativa {tentativa+1}): {e}")
+            time.sleep(5)
 
 def enviar_db():
     for tentativa in range(3):
@@ -96,9 +102,8 @@ def enviar_db():
             print("📤 DB enviada para o Dropbox")
             return
         except Exception as e:
-            print(f"⚠️ Dropbox erro (tentativa {tentativa+1}): {e}")
+            print(f"⚠️ Dropbox upload erro (tentativa {tentativa+1}): {e}")
             time.sleep(5)
-
 
 # --------------------------------------------------
 # Inicialização DB
