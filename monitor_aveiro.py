@@ -2,6 +2,7 @@ import requests
 import sqlite3
 import time
 import os
+import signal
 import dropbox
 from datetime import datetime
 
@@ -241,9 +242,19 @@ def monitorizar():
 # Execução
 # --------------------------------------------------
 if __name__ == "__main__":
+    import os
+    import signal
+
+    def watchdog_ping():
+        try:
+            os.kill(1, signal.SIGUSR1)  # avisa o systemd que o script está vivo
+        except Exception:
+            pass
+
     while True:
         try:
             monitorizar()
+            watchdog_ping()  # avisa o systemd
         except Exception as e:
             print(f"❌ Erro: {e}")
         time.sleep(300)  # espera 300 segundos antes da próxima execução
