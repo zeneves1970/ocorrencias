@@ -6,10 +6,11 @@ import signal
 import dropbox
 from datetime import datetime
 
-# --------------------------------------------------
-# Configurações API
-# --------------------------------------------------
+# ==================================================
+# CONFIGURAÇÕES
+# ==================================================
 URL = "https://prociv-agserver.geomai.mai.gov.pt/arcgis/rest/services/Ocorrencias_Base/FeatureServer/0/query"
+
 HEADERS = {
     "User-Agent": "Mozilla/5.0",
     "Accept": "application/json"
@@ -32,18 +33,26 @@ BASE_PARAMS = {
     "resultRecordCount": 50
 }
 
-# --------------------------------------------------
-# Ficheiros / Dropbox
-# --------------------------------------------------
 DB_FILE = "ocorrencias_aveiro.db"
 DROPBOX_PATH = "/ocorrencias_aveiro.db"
 
-# --------------------------------------------------
-# Telegram
-# --------------------------------------------------
 TELEGRAM_TOKEN = os.environ.get("TELEGRAM_TOKEN")
 TELEGRAM_CHAT_ID = os.environ.get("TELEGRAM_CHAT_ID")
 
+INTERVALO = 300   # segundos (5 minutos)
+
+# ==================================================
+# WATCHDOG (systemd)
+# ==================================================
+def watchdog_ping():
+    try:
+        os.kill(1, signal.SIGUSR1)
+    except Exception:
+        pass
+
+# ==================================================
+# TELEGRAM
+# ==================================================
 def enviar_telegram(mensagem: str):
     if not TELEGRAM_TOKEN or not TELEGRAM_CHAT_ID:
         print("⚠️ Telegram não configurado")
@@ -56,23 +65,29 @@ def enviar_telegram(mensagem: str):
         "parse_mode": "HTML"
     }
 
-    r = requests.post(url, json=payload, timeout=15)
-    if r.status_code == 200:
-        print("📨 Alerta enviado para o Telegram")
-    else:
-        print(f"❌ Erro Telegram: {r.text}")
+    try:
+        r = requests.post(url, json=payload, timeout=15)
+        if r.status_code == 200:
+            print("📨 Alerta enviado para o Telegram")
+        else:
+            print(f"❌ Erro Telegram: {r.text}")
+    except Exception as e:
+        print(f"⚠️ Falha Telegram: {e}")
 
-# --------------------------------------------------
-# Dropbox
-# --------------------------------------------------
+# ==================================================
+# DROPBOX
+# ==================================================
+def dropbox_client():
+    return dropbox.Dropbox(
+        oauth2_refresh_token=os.environ.get("DROPBOX_REFRESH_TOKEN"),
+        app_key=os.environ.get("DROPBOX_APP_KEY"),
+        app_secret=os.environ.get("DROPBOX_APP_SECRET"),
+    )
+
 def baixar_db():
     for tentativa in range(3):
         try:
-            dbx = dropbox.Dropbox(
-                oauth2_refresh_token=os.environ.get("DROPBOX_REFRESH_TOKEN"),
-                app_key=os.environ.get("DROPBOX_APP_KEY"),
-                app_secret=os.environ.get("DROPBOX_APP_SECRET"),
-            )
+            dbx = dropbox_client()
             metadata, res = dbx.files_download(DROPBOX_PATH)
             with open(DB_FILE, "wb") as f:
                 f.write(res.content)
@@ -82,17 +97,13 @@ def baixar_db():
             print("⚠️ DB não existe no Dropbox — será criada localmente")
             return
         except Exception as e:
-            print(f"⚠️ Dropbox download erro (tentativa {tentativa+1}): {e}")
+            print(f"⚠️ Dropbox download erro ({tentativa+1}/3): {e}")
             time.sleep(5)
 
 def enviar_db():
     for tentativa in range(3):
         try:
-            dbx = dropbox.Dropbox(
-                oauth2_refresh_token=os.environ.get("DROPBOX_REFRESH_TOKEN"),
-                app_key=os.environ.get("DROPBOX_APP_KEY"),
-                app_secret=os.environ.get("DROPBOX_APP_SECRET"),
-            )
+            dbx = dropbox_client()
             with open(DB_FILE, "rb") as f:
                 dbx.files_upload(
                     f.read(),
@@ -102,14 +113,14 @@ def enviar_db():
             print("📤 DB enviada para o Dropbox")
             return
         except Exception as e:
-            print(f"⚠️ Dropbox upload erro (tentativa {tentativa+1}): {e}")
+            print(f"⚠️ Dropbox upload erro ({tentativa+1}/3): {e}")
             time.sleep(5)
 
-# --------------------------------------------------
-# Inicialização DB
-# --------------------------------------------------
+# ==================================================
+# BASE DE DADOS
+# ==================================================
 baixar_db()
-conn = sqlite3.connect(DB_FILE)
+conn = sqlite3.connect(DB_FILE, check_same_thread=False)
 c = conn.cursor()
 
 c.execute("""
@@ -126,17 +137,17 @@ CREATE TABLE IF NOT EXISTS ocorrencias (
 )
 """)
 
-# Tabela APENAS para controlo de alertas (fingerprint lógico)
 c.execute("""
 CREATE TABLE IF NOT EXISTS notificadas (
     fingerprint TEXT PRIMARY KEY
 )
 """)
+
 conn.commit()
 
-# --------------------------------------------------
-# Obter ocorrências da API
-# --------------------------------------------------
+# ==================================================
+# API PROCIV
+# ==================================================
 def obter_ocorrencias():
     ocorrencias = []
     offset = 0
@@ -160,26 +171,22 @@ def obter_ocorrencias():
 
     return ocorrencias
 
-# --------------------------------------------------
-# Guardar ocorrência + alerta Telegram
-# --------------------------------------------------
+# ==================================================
+# PROCESSAMENTO
+# ==================================================
 def guardar_ocorrencia(attrs):
     objectid = attrs["OBJECTID"]
-
     data_inicio = attrs.get("DataInicioOcorrencia", "")
     concelho = attrs.get("Concelho", "")
     natureza = attrs.get("Natureza", "")
 
-    # Fingerprint lógico da ocorrência
     fingerprint = f"{data_inicio}|{concelho}|{natureza}"
 
-    # Verificar se já foi notificada
     ja_notificada = c.execute(
         "SELECT 1 FROM notificadas WHERE fingerprint=?",
         (fingerprint,)
     ).fetchone()
 
-    # Guardar / atualizar ocorrência (OBJECTID continua a ser usado aqui)
     c.execute("""
         INSERT INTO ocorrencias
         (objectid, DataInicioOcorrencia, natureza, concelho, estado,
@@ -205,7 +212,6 @@ def guardar_ocorrencia(attrs):
         attrs.get("NumeroMeiosAereosEnvolvidos", 0),
     ))
 
-    # Enviar alerta Telegram APENAS se fingerprint for novo
     if not ja_notificada:
         mensagem = (
             "🚨 <b>Nova ocorrência</b>\n\n"
@@ -218,7 +224,6 @@ def guardar_ocorrencia(attrs):
             f"🚁 Meios A.: {attrs.get('NumeroMeiosAereosEnvolvidos',0)}"
         )
         enviar_telegram(mensagem)
-
         c.execute(
             "INSERT INTO notificadas (fingerprint) VALUES (?)",
             (fingerprint,)
@@ -226,9 +231,6 @@ def guardar_ocorrencia(attrs):
 
     conn.commit()
 
-# --------------------------------------------------
-# Limpeza (10 dias)
-# --------------------------------------------------
 def apagar_antigas():
     c.execute("""
         DELETE FROM ocorrencias
@@ -236,9 +238,6 @@ def apagar_antigas():
     """)
     conn.commit()
 
-# --------------------------------------------------
-# Monitorização
-# --------------------------------------------------
 def monitorizar():
     ocorrencias = obter_ocorrencias()
 
@@ -250,23 +249,16 @@ def monitorizar():
 
     print(f"✔️ {len(ocorrencias)} ocorrências processadas")
 
-# --------------------------------------------------
-# Execução
-# --------------------------------------------------
+# ==================================================
+# LOOP PRINCIPAL
+# ==================================================
 if __name__ == "__main__":
-    import os
-    import signal
-
-    def watchdog_ping():
-        try:
-            os.kill(1, signal.SIGUSR1)  # avisa o systemd que o script está vivo
-        except Exception:
-            pass
+    print("🚀 Monitor Aveiro iniciado")
 
     while True:
         try:
             monitorizar()
-            watchdog_ping()  # avisa o systemd
+            watchdog_ping()
         except Exception as e:
-            print(f"❌ Erro: {e}")
-        time.sleep(300)  # espera 300 segundos antes da próxima execução
+            print(f"❌ Erro crítico: {e}")
+        time.sleep(INTERVALO)
