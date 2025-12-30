@@ -80,18 +80,25 @@ def baixar_db():
         print("⚠️ DB não existe no Dropbox — será criada localmente")
 
 def enviar_db():
-    dbx = dropbox.Dropbox(
-        oauth2_refresh_token=os.environ.get("DROPBOX_REFRESH_TOKEN"),
-        app_key=os.environ.get("DROPBOX_APP_KEY"),
-        app_secret=os.environ.get("DROPBOX_APP_SECRET"),
-    )
-    with open(DB_FILE, "rb") as f:
-        dbx.files_upload(
-            f.read(),
-            DROPBOX_PATH,
-            mode=dropbox.files.WriteMode.overwrite
-        )
-    print("📤 DB enviada para o Dropbox")
+    for tentativa in range(3):
+        try:
+            dbx = dropbox.Dropbox(
+                oauth2_refresh_token=os.environ.get("DROPBOX_REFRESH_TOKEN"),
+                app_key=os.environ.get("DROPBOX_APP_KEY"),
+                app_secret=os.environ.get("DROPBOX_APP_SECRET"),
+            )
+            with open(DB_FILE, "rb") as f:
+                dbx.files_upload(
+                    f.read(),
+                    DROPBOX_PATH,
+                    mode=dropbox.files.WriteMode.overwrite
+                )
+            print("📤 DB enviada para o Dropbox")
+            return
+        except Exception as e:
+            print(f"⚠️ Dropbox erro (tentativa {tentativa+1}): {e}")
+            time.sleep(5)
+
 
 # --------------------------------------------------
 # Inicialização DB
