@@ -177,32 +177,14 @@ def guardar_ocorrencia(attrs):
         (fingerprint,)
     ).fetchone()
 
-    c.execute("""
-        INSERT INTO ocorrencias
-        (objectid, DataInicioOcorrencia, natureza, concelho, estado,
-         operacionais, meios_terrestres, meios_aereos, data_atualizacao)
-        VALUES (?, ?, ?, ?, ?, ?, ?, ?, CURRENT_TIMESTAMP)
-        ON CONFLICT(objectid) DO UPDATE SET
-            DataInicioOcorrencia=excluded.DataInicioOcorrencia,
-            natureza=excluded.natureza,
-            concelho=excluded.concelho,
-            estado=excluded.estado,
-            operacionais=excluded.operacionais,
-            meios_terrestres=excluded.meios_terrestres,
-            meios_aereos=excluded.meios_aereos,
-            data_atualizacao=CURRENT_TIMESTAMP
-    """, (
-        objectid,
-        data_inicio,
-        natureza,
-        concelho,
-        attrs.get("EstadoAgrupado", ""),
-        attrs.get("Operacionais", 0),
-        attrs.get("NumeroMeiosTerrestresEnvolvidos", 0),
-        attrs.get("NumeroMeiosAereosEnvolvidos", 0),
-    ))
-
+    # 🔒 marca logo como notificada
     if not ja_notificada:
+        c.execute(
+            "INSERT OR IGNORE INTO notificadas (fingerprint) VALUES (?)",
+            (fingerprint,)
+        )
+        conn.commit()
+
         mensagem = (
             "🚨 <b>Nova ocorrência</b>\n\n"
             f"🕒 {data_inicio.replace('T',' ')}\n"
@@ -213,31 +195,17 @@ def guardar_ocorrencia(attrs):
             f"🚒 Meios T.: {attrs.get('NumeroMeiosTerrestresEnvolvidos',0)}\n"
             f"🚁 Meios A.: {attrs.get('NumeroMeiosAereosEnvolvidos',0)}"
         )
+
         enviar_telegram(mensagem)
-        c.execute(
-            "INSERT INTO notificadas (fingerprint) VALUES (?)",
-            (fingerprint,)
-        )
 
-    conn.commit()
-
-def apagar_antigas():
+    # agora sim atualiza a tabela de ocorrências
     c.execute("""
-        DELETE FROM ocorrencias
-        WHERE data_atualizacao < datetime('now', '-10 days')
-    """)
+        INSERT INTO ocorrencias (...)
+        ON CONFLICT(objectid) DO UPDATE SET ...
+    """, (...))
+
     conn.commit()
 
-def monitorizar():
-    ocorrencias = obter_ocorrencias()
-
-    for o in ocorrencias:
-        guardar_ocorrencia(o["attributes"])
-
-    apagar_antigas()
-    enviar_db()
-
-    print(f"✔️ {len(ocorrencias)} ocorrências processadas")
 
 # ==================================================
 # LOOP PRINCIPAL
