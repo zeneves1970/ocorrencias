@@ -3,6 +3,7 @@ import sqlite3
 import time
 import os
 import dropbox
+import json
 from datetime import datetime
 
 # ==================================================
@@ -33,12 +34,13 @@ BASE_PARAMS = {
 }
 
 DB_FILE = "ocorrencias_aveiro.db"
-DROPBOX_PATH = "/ocorrencias_aveiro.db"
+DROPBOX_DB_PATH = "/ocorrencias_aveiro.db"
+DROPBOX_JSON_PATH = "/ocorrencias.json"
 
 TELEGRAM_TOKEN = os.environ.get("TELEGRAM_TOKEN")
 TELEGRAM_CHAT_ID = os.environ.get("TELEGRAM_CHAT_ID")
 
-INTERVALO = 300  # segundos (5 minutos)
+INTERVALO = 300  # 5 minutos
 
 # ==================================================
 # TELEGRAM
@@ -58,7 +60,7 @@ def enviar_telegram(mensagem: str):
     try:
         r = requests.post(url, json=payload, timeout=15)
         if r.status_code == 200:
-            print("📨 Alerta enviado para o Telegram")
+            print("📨 Alerta enviado")
         else:
             print(f"❌ Erro Telegram: {r.text}")
     except Exception as e:
@@ -75,41 +77,40 @@ def dropbox_client():
     )
 
 def baixar_db():
-    for tentativa in range(3):
-        try:
-            dbx = dropbox_client()
-            metadata, res = dbx.files_download(DROPBOX_PATH)
-            with open(DB_FILE, "wb") as f:
-                f.write(res.content)
-            print("📥 DB descarregada do Dropbox")
-            return
-        except dropbox.exceptions.ApiError:
-            print("⚠️ DB não existe no Dropbox — será criada localmente")
-            return
-        except Exception as e:
-            print(f"⚠️ Dropbox download erro ({tentativa+1}/3): {e}")
-            time.sleep(5)
+    try:
+        dbx = dropbox_client()
+        metadata, res = dbx.files_download(DROPBOX_DB_PATH)
+        with open(DB_FILE, "wb") as f:
+            f.write(res.content)
+        print("📥 DB descarregada do Dropbox")
+    except:
+        print("ℹ️ DB ainda não existe no Dropbox")
 
 def enviar_db():
-    for tentativa in range(3):
-        try:
-            dbx = dropbox_client()
-            with open(DB_FILE, "rb") as f:
-                dbx.files_upload(
-                    f.read(),
-                    DROPBOX_PATH,
-                    mode=dropbox.files.WriteMode.overwrite
-                )
-            print("📤 DB enviada para o Dropbox")
-            return
-        except Exception as e:
-            print(f"⚠️ Dropbox upload erro ({tentativa+1}/3): {e}")
-            time.sleep(5)
+    dbx = dropbox_client()
+    with open(DB_FILE, "rb") as f:
+        dbx.files_upload(
+            f.read(),
+            DROPBOX_DB_PATH,
+            mode=dropbox.files.WriteMode.overwrite
+        )
+    print("📤 DB enviada para o Dropbox")
+
+def enviar_json():
+    dbx = dropbox_client()
+    with open("ocorrencias.json", "rb") as f:
+        dbx.files_upload(
+            f.read(),
+            DROPBOX_JSON_PATH,
+            mode=dropbox.files.WriteMode.overwrite
+        )
+    print("📤 JSON enviado para o Dropbox")
 
 # ==================================================
 # BASE DE DADOS
 # ==================================================
 baixar_db()
+
 conn = sqlite3.connect(DB_FILE, check_same_thread=False)
 c = conn.cursor()
 
@@ -183,9 +184,6 @@ def guardar_ocorrencia(attrs):
          operacionais, meios_terrestres, meios_aereos, data_atualizacao)
         VALUES (?, ?, ?, ?, ?, ?, ?, ?, CURRENT_TIMESTAMP)
         ON CONFLICT(objectid) DO UPDATE SET
-            DataInicioOcorrencia=excluded.DataInicioOcorrencia,
-            natureza=excluded.natureza,
-            concelho=excluded.concelho,
             estado=excluded.estado,
             operacionais=excluded.operacionais,
             meios_terrestres=excluded.meios_terrestres,
@@ -228,6 +226,53 @@ def apagar_antigas():
     """)
     conn.commit()
 
+# ==================================================
+# GERAR JSON PARA O SITE
+# ==================================================
+def gerar_json():
+    rows = c.execute("""
+        SELECT
+            DataInicioOcorrencia,
+            natureza,
+            concelho,
+            estado,
+            operacionais,
+            meios_terrestres,
+            meios_aereos,
+            data_atualizacao
+        FROM (
+            SELECT *,
+                   ROW_NUMBER() OVER (
+                       PARTITION BY DataInicioOcorrencia, natureza, concelho
+                       ORDER BY data_atualizacao DESC
+                   ) AS rn
+            FROM ocorrencias
+        )
+        WHERE rn = 1
+        ORDER BY datetime(DataInicioOcorrencia) DESC
+    """).fetchall()
+
+    data = []
+    for r in rows:
+        data.append({
+            "data_inicio": r[0],
+            "natureza": r[1],
+            "concelho": r[2],
+            "estado": r[3],
+            "operacionais": r[4],
+            "meios_terrestres": r[5],
+            "meios_aereos": r[6],
+            "atualizado": r[7]
+        })
+
+    with open("ocorrencias.json", "w", encoding="utf-8") as f:
+        json.dump(data, f, ensure_ascii=False)
+
+    enviar_json()
+
+# ==================================================
+# LOOP PRINCIPAL
+# ==================================================
 def monitorizar():
     ocorrencias = obter_ocorrencias()
 
@@ -236,12 +281,10 @@ def monitorizar():
 
     apagar_antigas()
     enviar_db()
+    gerar_json()
 
     print(f"✔️ {len(ocorrencias)} ocorrências processadas")
 
-# ==================================================
-# LOOP PRINCIPAL
-# ==================================================
 if __name__ == "__main__":
     print("🚀 Monitor Aveiro iniciado")
 
